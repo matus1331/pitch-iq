@@ -1,6 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { badgeUrl } from '@/lib/clubColors'
-import { type Profile, type Team, useIqRows } from '@/lib/data'
+import { type Profile, useIqRows } from '@/lib/data'
 import { levelFor } from '@/lib/level'
 import { iqSummary } from '@/lib/standings'
 
@@ -11,14 +10,14 @@ const NAV = [
   { to: '/profil', label: 'Profil' },
 ]
 
-export function Shell({ profile, club }: { profile: Profile; club: Team | undefined }) {
+export function Shell({ profile }: { profile: Profile }) {
   const iq = useIqRows()
   const lv = iq.data && levelFor(iqSummary(iq.data.individual, iq.data.club, profile.id).total)
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
       <div className="scarf h-3" aria-hidden />
       <header className="flex items-center gap-3 px-4 py-3">
-        {club && <img src={badgeUrl(club.code)} alt="" className="size-9" />}
+        <img src="/icon-192.png" alt="" className="size-9 rounded-lg" />
         <div className="min-w-0 flex-1">
           <p className="font-heading text-2xl leading-none">PitchIQ</p>
           <p className="truncate text-sm opacity-80">{profile.nickname}{lv ? ` · Lv ${lv.level} ${lv.title}` : ''}</p>

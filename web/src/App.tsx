@@ -24,7 +24,7 @@ export default function App() {
   else
     content = (
       <Routes>
-        <Route element={<Shell profile={profile.data} club={club} />}>
+        <Route element={<Shell profile={profile.data} />}>
           <Route index element={<Round />} />
           <Route path="klub" element={<ClubMatch profile={profile.data} />} />
           <Route path="tabulky" element={<Standings />} />

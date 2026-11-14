@@ -13,11 +13,11 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center gap-3">
-        {club && <img src={badgeUrl(club.code)} alt="" className="size-14 rounded-full bg-white p-1" />}
+      <div className="flex items-center gap-4 rounded-xl bg-white p-4 text-neutral-900 shadow-md">
+        {club && <img src={badgeUrl(club.code)} alt="" className="size-16 shrink-0" />}
         <div className="min-w-0">
           <h1 className="font-heading truncate text-4xl leading-none">{profile.nickname}</h1>
-          {club && <p className="opacity-85">Tipuje za {club.name}</p>}
+          <p className="truncate text-neutral-600">{club ? `${club.name} · ` : ''}Lv {lv.level} {lv.title}</p>
         </div>
       </div>
 

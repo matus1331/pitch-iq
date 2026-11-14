@@ -6,10 +6,12 @@ import { errorText, supabase } from '@/lib/supabase'
 
 export function AuthCard({ children, title }: { children: React.ReactNode; title: string }) {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
-      <img src="/logo.png" alt="" className="mb-4 size-28 rounded-2xl" />
-      <h1 className="font-heading mb-1 text-5xl leading-none">PitchIQ</h1>
-      <p className="mb-8 text-lg opacity-85">{title}</p>
+    <div className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
+      {/* Watermark: screen blending drops the logo's dark backdrop, leaving only the shield. */}
+      <img src="/logo.png" alt="" aria-hidden
+        className="pointer-events-none fixed top-1/2 left-1/2 -z-10 size-[min(170vw,120vh)] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-20 mix-blend-screen [mask-image:radial-gradient(closest-side,black_55%,transparent)]" />
+      <h1 className="font-heading mb-1 text-center text-6xl leading-none">PitchIQ</h1>
+      <p className="mb-8 text-center text-lg opacity-85">{title}</p>
       <div className="rounded-xl bg-white p-5 text-neutral-900 shadow-lg">{children}</div>
     </div>
   )

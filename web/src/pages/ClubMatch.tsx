@@ -71,6 +71,7 @@ export function ClubMatch({ profile }: { profile: Profile }) {
         const total = mine.reduce((s, t) => s + (t.points ?? 0), 0)
         return (
           <div key={f.id}>
+            {i === 0 && upcoming.length > 0 && <h2 className="font-heading mb-3 text-3xl leading-none opacity-90">{upcoming.length > 1 ? 'Nadchádzajúce zápasy' : 'Nadchádzajúci zápas'}</h2>}
             {i === upcoming.length && <h2 className="font-heading mb-3 text-3xl leading-none opacity-90">Odohrané</h2>}
             <div className="mb-3 flex items-center gap-3">
               <img src={badgeUrl(opp.code)} alt="" className="size-10 rounded-full bg-white p-1" />
