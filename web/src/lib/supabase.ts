@@ -23,6 +23,8 @@ const MESSAGES: Record<string, string> = {
   DUEL_LIMIT: 'V jednom kole môžeš mať najviac 2 duely.',
   DUEL_OPPONENT_LIMIT: 'Súper už má v tomto kole 2 duely.',
   DUEL_STAKE_TOO_HIGH: 'Na takú stávku nemáš dosť voľného IQ.',
+  DUEL_NOT_ENOUGH_IQ: 'Duely sa ti odomknú, keď budeš mať aspoň 5 voľného IQ.',
+  DUEL_OPPONENT_NO_IQ: 'Súper nemá dosť voľného IQ na takú stávku.',
   DUEL_NOT_YOURS: 'Tento duel nie je tvoj.',
   DUEL_NOT_PENDING: 'Na tento duel sa už odpovedalo.',
   DUEL_CLOSED: 'Kolo už začalo, na výzvu sa už nedá odpovedať.',

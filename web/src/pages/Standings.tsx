@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { levelFor } from '@shared/level.ts'
-import { ChallengeButton } from '@/components/Duels'
+import { ChallengeButton, MIN_STAKE, useDuelStanding } from '@/components/Duels'
 import { badgeUrl } from '@/lib/clubColors'
 import { useDuels, useIqRows, useProfiles, useSession, useTeams } from '@/lib/data'
 import { duelRecord, playerIq, type RoundRow, rankRows, totals } from '@/lib/standings'
@@ -20,6 +20,7 @@ export function Standings() {
   const duels = useDuels()
   const [board, setBoard] = useState<Board>('individual')
   const [gw, setGw] = useState<number | null>(null)
+  const standing = useDuelStanding(session?.user.id ?? '')
 
   // Duel results as per-round rows, so the same totals/round filter works for all three boards.
   const duelRows: RoundRow[] = (duels.data ?? []).filter((d) => d.status === 'finished').flatMap((d) => [
@@ -55,6 +56,12 @@ export function Standings() {
       </label>
       {board === 'duels' && (
         <p className="mb-3 text-sm opacity-85">Čistý zisk IQ z duelov. Kamoša vyzveš tlačidlom Vyzvať pri jeho mene.</p>
+      )}
+      {standing && standing.free < MIN_STAKE && (
+        <p className="mb-3 rounded-lg bg-black/25 p-3 text-sm">
+          Duely máš zamknuté, kým nebudeš mať aspoň {MIN_STAKE} voľného IQ (najnižšia stávka). Teraz máš {Math.max(0, standing.free)}.
+          Hráčov s menej ako {MIN_STAKE} IQ tiež nejde vyzvať.
+        </p>
       )}
 
       <ol className="overflow-hidden rounded-xl bg-white text-neutral-900 shadow-md">

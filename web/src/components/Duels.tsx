@@ -7,6 +7,7 @@ import { playerIq } from '@/lib/standings'
 import { errorText, must, supabase } from '@/lib/supabase'
 
 const STAKES = [5, 10, 20] as const
+export const MIN_STAKE = STAKES[0]
 
 /** IQ, level and the IQ still free to bet for one player; everything duels need to decide. */
 export function useDuelStanding(userId: string) {
@@ -14,14 +15,16 @@ export function useDuelStanding(userId: string) {
   const duels = useDuels()
   if (!iq.data || !duels.data) return null
   const of = (u: string) => playerIq(iq.data.individual, iq.data.club, duels.data, u)
-  const me = of(userId)
-  const locked = duels.data
-    .filter((d) => (d.status === 'pending' || d.status === 'accepted') && (d.challenger_id === userId || d.opponent_id === userId))
+  // Same rule as the server: accepted duels and own outgoing challenges tie up IQ, incoming ones do not.
+  const freeOf = (u: string) => of(u).total - duels.data
+    .filter((d) => (d.status === 'accepted' && (d.challenger_id === u || d.opponent_id === u))
+      || (d.status === 'pending' && d.challenger_id === u))
     .reduce((n, d) => n + d.stake, 0)
   return {
     duels: duels.data,
     rows: iq.data,
-    free: me.total - locked,
+    free: freeOf(userId),
+    freeOf,
     levelOf: (u: string) => levelFor(of(u).peak).level,
   }
 }
@@ -155,9 +158,18 @@ export function ChallengeButton({ opponent, userId }: { opponent: Profile; userI
   }
 
   const underdog = s ? s.levelOf(userId) < s.levelOf(opponent.id) : false
+  const theirFree = s?.freeOf(opponent.id) ?? 0
+  const locked = !s || s.free < MIN_STAKE || theirFree < MIN_STAKE
+  const why = !s ? '' : s.free < MIN_STAKE
+    ? `Duely sa ti odomknú, keď budeš mať aspoň ${MIN_STAKE} voľného IQ.`
+    : theirFree < MIN_STAKE ? `${opponent.nickname} zatiaľ nemá ${MIN_STAKE} voľného IQ, nedá sa vyzvať.` : ''
+  if (s && s.free >= MIN_STAKE && theirFree < MIN_STAKE) {
+    return <span className="w-16 text-center text-xs leading-tight text-neutral-500" title={why}>Málo IQ na duel</span>
+  }
   return (
     <>
-      <Button size="sm" variant="outline" className="h-8" onClick={() => { setStake(null); setError(null); setOpen(true) }}>
+      <Button size="sm" variant="outline" className="h-8" disabled={locked} title={why || undefined} aria-label={why || undefined}
+        onClick={() => { setStake(null); setError(null); setOpen(true) }}>
         Vyzvať
       </Button>
       <dialog ref={ref} onClose={() => setOpen(false)}
@@ -172,16 +184,15 @@ export function ChallengeButton({ opponent, userId }: { opponent: Profile; userI
             {opponent.nickname} má vyšší level. Ak vyhráš, dostaneš navyše polovicu stávky.
           </p>
         )}
-        <p className="mt-4 mb-2 text-sm font-semibold">Stávka · voľné IQ: {s?.free ?? '…'}</p>
+        <p className="mt-4 mb-2 text-sm font-semibold">Stávka · tvoje voľné IQ {s?.free ?? '…'} · súperovo {theirFree}</p>
         <div className="grid grid-cols-3 gap-2">
           {STAKES.map((v) => (
             <Button key={v} variant={stake === v ? 'default' : 'outline'} aria-pressed={stake === v}
-              disabled={!s || v > s.free} onClick={() => setStake(v)} className="h-11 text-base">
+              disabled={!s || v > s.free || v > theirFree} onClick={() => setStake(v)} className="h-11 text-base">
               {v} IQ
             </Button>
           ))}
         </div>
-        {s && s.free < STAKES[0] && <p className="mt-2 text-sm text-neutral-600">Na duel potrebuješ aspoň 5 voľného IQ.</p>}
         {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
         <div className="mt-5 grid grid-cols-2 gap-2">
           <Button variant="ghost" onClick={() => setOpen(false)}>Späť</Button>
