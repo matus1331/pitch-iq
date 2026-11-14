@@ -17,3 +17,17 @@ export function rankRows<T extends Row>(rows: T[]): (T & { rank: number })[] {
     return { ...r, rank }
   })
 }
+
+/** One player's IQ across both competitions; the last round is the latest one anybody scored in. */
+export function iqSummary(individual: RoundRow[], club: RoundRow[], userId: string) {
+  const mine = (rows: RoundRow[], gw?: number) =>
+    rows.filter((r) => r.user_id === userId && (gw == null || r.gameweek_id === gw)).reduce((s, r) => s + r.points, 0)
+  const rounds = [...individual, ...club].map((r) => r.gameweek_id)
+  const lastRound = rounds.length ? Math.max(...rounds) : null
+  return {
+    total: mine(individual) + mine(club),
+    lastRound,
+    lastRoundIndividual: lastRound == null ? 0 : mine(individual, lastRound),
+    lastRoundClub: lastRound == null ? 0 : mine(club, lastRound),
+  }
+}

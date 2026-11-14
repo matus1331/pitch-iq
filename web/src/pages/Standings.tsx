@@ -1,9 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { badgeUrl } from '@/lib/clubColors'
-import { useProfiles, useSession, useTeams } from '@/lib/data'
-import { type RoundRow, rankRows, totals } from '@/lib/standings'
-import { must, supabase } from '@/lib/supabase'
+import { useIqRows, useProfiles, useSession, useTeams } from '@/lib/data'
+import { levelFor } from '@/lib/level'
+import { iqSummary, rankRows, totals } from '@/lib/standings'
 
 type Board = 'individual' | 'club'
 
@@ -14,11 +13,8 @@ export function Standings() {
   const [board, setBoard] = useState<Board>('individual')
   const [gw, setGw] = useState<number | null>(null)
 
-  const rows = useQuery({
-    queryKey: ['leaderboard', board],
-    queryFn: async () =>
-      must(await supabase.from(board === 'individual' ? 'leaderboard_individual' : 'leaderboard_club').select('*')) as RoundRow[],
-  })
+  const iq = useIqRows()
+  const rows = { data: iq.data?.[board] }
 
   const players = (profiles.data ?? []).filter((p) => board === 'individual' || p.club_team_id)
   const ranked = rankRows(totals(rows.data ?? [], players, gw))
@@ -54,7 +50,12 @@ export function Standings() {
               className={`flex items-center gap-3 border-b border-neutral-100 px-4 py-3 last:border-0 ${me ? 'bg-[var(--club-secondary)]/15 font-semibold' : ''}`}>
               <span className="scoreboard w-7 text-xl text-neutral-500">{r.rank}.</span>
               {board === 'club' && team && <img src={badgeUrl(team.code)} alt={team.name} className="size-7" />}
-              <span className="flex-1 truncate">{r.nickname}</span>
+              <span className="min-w-0 flex-1 truncate">{r.nickname}</span>
+              {iq.data && (
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                  Lv {levelFor(iqSummary(iq.data.individual, iq.data.club, r.user_id).total).level}
+                </span>
+              )}
               <span className="scoreboard text-2xl">{r.points}</span>
             </li>
           )

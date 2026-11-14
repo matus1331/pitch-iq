@@ -32,8 +32,8 @@ export const CLUB_COLORS: Record<string, ClubColors> = {
   BUR: { primary: '#6c1d45', secondary: '#99d6ea', text: '#ffffff' },
 }
 
-// Before a club is chosen: pitch green with chalk lines.
-export const NEUTRAL_COLORS: ClubColors = { primary: '#14532d', secondary: '#f3f5f4', text: '#ffffff' }
+// Before a club is chosen: PitchIQ navy with the logo green.
+export const NEUTRAL_COLORS: ClubColors = { primary: '#0b1628', secondary: '#3ddc6e', text: '#ffffff' }
 
 export const badgeUrl = (code: number) =>
   `https://resources.premierleague.com/premierleague/badges/100/t${code}.png` // the unsized set has white-only variants (e.g. Liverpool)

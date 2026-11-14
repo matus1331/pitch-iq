@@ -7,8 +7,8 @@ import { errorText, supabase } from '@/lib/supabase'
 export function AuthCard({ children, title }: { children: React.ReactNode; title: string }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
-      <div className="scarf mb-8 h-4 rounded-sm" aria-hidden />
-      <h1 className="font-heading mb-1 text-5xl leading-none">PL Tipovačka</h1>
+      <img src="/logo.png" alt="" className="mb-4 size-28 rounded-2xl" />
+      <h1 className="font-heading mb-1 text-5xl leading-none">PitchIQ</h1>
       <p className="mb-8 text-lg opacity-85">{title}</p>
       <div className="rounded-xl bg-white p-5 text-neutral-900 shadow-lg">{children}</div>
     </div>
@@ -35,7 +35,7 @@ export function Login() {
   }
 
   return (
-    <AuthCard title="Tipuj kolo Premier League s kamošmi.">
+    <AuthCard title="Tipuj Premier League s kamošmi a zbieraj IQ body.">
       <Button
         variant="outline"
         className="h-11 w-full text-base"

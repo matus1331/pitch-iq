@@ -62,7 +62,7 @@ export function Round() {
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-4xl leading-none">{gw ? `${gw}. kolo` : 'Kolo'}</h1>
-          <p className="opacity-80">Tvoje body v tomto kole: {total}</p>
+          <p className="opacity-80">Tvoje IQ body v tomto kole: {total}</p>
         </div>
         {options.length > 1 && (
           <div className="flex gap-1 rounded-lg bg-black/20 p-1 text-sm">

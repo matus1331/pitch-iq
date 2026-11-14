@@ -70,7 +70,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
       </header>
       <p className="px-4 pt-1 text-center text-xs text-neutral-500">
         {state === 'postponed' ? 'Zápas je odložený, termín zatiaľ nie je známy.'
-          : `${kickoffFmt.format(new Date(fixture.kickoff_time!))}${state === 'scored' ? (fixture.finished ? ' · koniec' : ' · body sú predbežné') : ''}`}
+          : `${kickoffFmt.format(new Date(fixture.kickoff_time!))}${state === 'scored' ? (fixture.finished ? ' · koniec' : ' · IQ body sú predbežné') : ''}`}
       </p>
 
       <div className="p-4">
@@ -80,7 +80,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
               {(['1x2', 'exact'] as const).map((m) => (
                 <button key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
                   className={`rounded-md py-1.5 font-semibold ${mode === m ? 'bg-white shadow-sm' : 'text-neutral-500'}`}>
-                  {m === '1x2' ? 'Víťaz · 2 body' : 'Presný výsledok · 5 bodov'}
+                  {m === '1x2' ? 'Víťaz · 2 IQ' : 'Presný výsledok · 5 IQ'}
                 </button>
               ))}
             </div>
@@ -122,7 +122,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
                 <span className={t.user_id === userId ? 'font-semibold' : ''}>{profiles.get(t.user_id)?.nickname ?? '?'}</span>
                 <span>
                   <span className="scoreboard mr-3">{tipLabel(t)}</span>
-                  {t.points != null && <span className="font-semibold">{t.points} b</span>}
+                  {t.points != null && <span className="font-semibold">{t.points} IQ</span>}
                 </span>
               </li>
             ))}

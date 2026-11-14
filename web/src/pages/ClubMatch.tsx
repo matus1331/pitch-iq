@@ -50,6 +50,8 @@ export function ClubMatch({ profile }: { profile: Profile }) {
 
   if (!teams.data || !data.data) return <p>Načítavam…</p>
   const { fixtures, offers, tips, players } = data.data
+  const upcoming = fixtures.filter((f) => !f.started)
+  const played = fixtures.filter((f) => f.started)
 
   return (
     <section className="space-y-8">
@@ -60,7 +62,7 @@ export function ClubMatch({ profile }: { profile: Profile }) {
       {error && <p role="alert" className="rounded-lg bg-white p-3 text-red-700">{error}</p>}
       {fixtures.length === 0 && <p>Tvoj klub v tomto ani nasledujúcom kole nehrá.</p>}
 
-      {fixtures.map((f) => {
+      {[...upcoming, ...played].map((f, i) => {
         const home = f.team_h === club
         const opp = teams.data.byId.get(home ? f.team_a : f.team_h)!
         const offer = offers.find((o) => o.fixture_id === f.id)
@@ -69,13 +71,14 @@ export function ClubMatch({ profile }: { profile: Profile }) {
         const total = mine.reduce((s, t) => s + (t.points ?? 0), 0)
         return (
           <div key={f.id}>
+            {i === upcoming.length && <h2 className="font-heading mb-3 text-3xl leading-none opacity-90">Odohrané</h2>}
             <div className="mb-3 flex items-center gap-3">
               <img src={badgeUrl(opp.code)} alt="" className="size-10 rounded-full bg-white p-1" />
               <div>
                 <h2 className="font-heading text-2xl leading-tight">{home ? 'Doma' : 'Vonku'} proti {opp.name}</h2>
                 <p className="text-sm opacity-85">
                   {f.kickoff_time ? kickoffFmt.format(new Date(f.kickoff_time)) : 'Termín zatiaľ nie je známy'}
-                  {state === 'scored' && ` · ${f.team_h_score}:${f.team_a_score} · tvoje body ${total}`}
+                  {state === 'scored' && ` · ${f.team_h_score}:${f.team_a_score} · tvoje IQ ${total}`}
                 </p>
               </div>
             </div>
@@ -87,6 +90,7 @@ export function ClubMatch({ profile }: { profile: Profile }) {
               </p>
             ) : (
               <ul className="space-y-3">
+                {state === 'open' && <PickCounter picked={mine.length} />}
                 {offer.tip_keys.map((key) => {
                   const tip = mine.find((t) => t.tip_key === key)
                   if (state !== 'open' && !tip) return null
@@ -112,5 +116,25 @@ export function ClubMatch({ profile }: { profile: Profile }) {
         )
       })}
     </section>
+  )
+}
+
+function PickCounter({ picked }: { picked: number }) {
+  return (
+    <li className="rounded-xl bg-black/25 p-3" aria-live="polite">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-semibold">Vybraté {picked} z 3 tipov</p>
+        <span className="flex gap-1.5" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className={`size-3.5 rounded-full border-2 border-[var(--club-text)] ${i < picked ? 'bg-[var(--club-text)]' : ''}`} />
+          ))}
+        </span>
+      </div>
+      <p className="mt-1 text-sm opacity-85">
+        {picked < 3
+          ? 'Zo šiestich tipov si vyber tri. Body dostaneš len za tie, ktoré vyberieš.'
+          : 'Máš všetky tri. Ak chceš iný tip, najprv jeden z vybraných zruš.'}
+      </p>
+    </li>
   )
 }

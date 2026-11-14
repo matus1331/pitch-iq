@@ -47,10 +47,10 @@ export function ClubTipField({ def, tip, players, editable, full, onSave, onRemo
         <div>
           <p className="font-semibold">{def.label}</p>
           <p className="text-sm text-neutral-500">
-            {def.kind === 'player' ? 'Tip na hráča' : 'Tip na tím'} · {def.points} {def.points === 1 ? 'bod' : def.points < 5 ? 'body' : 'bodov'}
+            {def.kind === 'player' ? 'Tip na hráča' : 'Tip na tím'} · {def.points} IQ
           </p>
         </div>
-        {tip?.points != null && <span className="scoreboard text-2xl">{tip.points} b</span>}
+        {tip?.points != null && <span className="scoreboard text-2xl">{tip.points} IQ</span>}
       </div>
 
       {chosen && !open && (
@@ -68,7 +68,7 @@ export function ClubTipField({ def, tip, players, editable, full, onSave, onRemo
       {editable && !chosen && !open && (
         <Button className="mt-3 w-full" variant="outline" disabled={full}
           onClick={() => (def.input === 'claim' ? save() : setOpen(true))}>
-          {full ? 'Už máš 3 tipy' : def.input === 'claim' ? 'Tipujem, že sa to stane' : 'Vybrať tento tip'}
+          {full ? 'Už máš 3 tipy, najprv jeden zruš' : def.input === 'claim' ? 'Tipujem, že sa to stane' : 'Vybrať tento tip'}
         </Button>
       )}
 

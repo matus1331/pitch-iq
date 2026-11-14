@@ -1,4 +1,4 @@
-# PL Tipovačka
+# PitchIQ
 
 Bezplatná tipovačka Premier League pre partiu kamošov. Má dve súťaže:
 

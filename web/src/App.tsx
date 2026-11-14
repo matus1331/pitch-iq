@@ -5,6 +5,7 @@ import { ChooseClub } from '@/pages/ChooseClub'
 import { ClubMatch } from '@/pages/ClubMatch'
 import { Login } from '@/pages/Login'
 import { Onboarding } from '@/pages/Onboarding'
+import { Profile } from '@/pages/Profile'
 import { Round } from '@/pages/Round'
 import { Standings } from '@/pages/Standings'
 import { ClubTheme } from '@/theme/ClubTheme'
@@ -27,6 +28,7 @@ export default function App() {
           <Route index element={<Round />} />
           <Route path="klub" element={<ClubMatch profile={profile.data} />} />
           <Route path="tabulky" element={<Standings />} />
+          <Route path="profil" element={<Profile profile={profile.data} club={club} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

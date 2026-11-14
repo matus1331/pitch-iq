@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { must, supabase } from './supabase'
+import type { RoundRow } from './standings'
 
 export interface Team { id: number; code: number; name: string; short_name: string }
 export interface Profile { id: string; nickname: string; club_team_id: number | null }
@@ -56,4 +57,17 @@ export const useGameweeks = () =>
   useQuery({
     queryKey: ['gameweeks'],
     queryFn: async () => must(await supabase.from('gameweeks').select('*').order('id')) as Gameweek[],
+  })
+
+/** Scored IQ per player and round, for both competitions (one query feeds profile, header and standings). */
+export const useIqRows = () =>
+  useQuery({
+    queryKey: ['iq'],
+    queryFn: async () => {
+      const [individual, club] = await Promise.all([
+        supabase.from('leaderboard_individual').select('*'),
+        supabase.from('leaderboard_club').select('*'),
+      ])
+      return { individual: must(individual) as RoundRow[], club: must(club) as RoundRow[] }
+    },
   })
