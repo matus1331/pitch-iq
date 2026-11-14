@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { type MatchTip, MatchTipCard } from '@/components/MatchTipCard'
 import { type Fixture, useGameweeks, useProfiles, useSession, useTeams } from '@/lib/data'
+import { defaultRound, splitRound } from '@/lib/roundView'
 import { must, supabase } from '@/lib/supabase'
 
 export function useRoundGws() {
@@ -23,12 +24,13 @@ export function Round() {
     queryKey: ['fixtures', options],
     enabled: options.length > 0,
     queryFn: async () =>
-      must(await supabase.from('fixtures').select('*').in('gameweek_id', options).order('kickoff_time')) as Fixture[],
+      must(await supabase.from('fixtures').select('*')
+        .or(`gameweek_id.in.(${options.join(',')}),gameweek_id.is.null`).order('kickoff_time')) as Fixture[],
   })
-  // Default to the first round that still has a match to tip.
-  const gw = picked ?? options.find((o) => all.data?.some((f) => f.gameweek_id === o && !f.started)) ?? options[0]
-  const fixtures = { ...all, data: all.data?.filter((f) => f.gameweek_id === gw) }
-  const ids = fixtures.data?.map((f) => f.id) ?? []
+  const gw = picked ?? defaultRound(all.data ?? [], options)
+  const { round, postponed } = splitRound(all.data ?? [], gw)
+  const fixtures = { ...all, data: all.data && round }
+  const ids = [...round, ...postponed].map((f) => f.id)
   const tips = useQuery({
     queryKey: ['match_tips', gw],
     enabled: ids.length > 0,
@@ -38,7 +40,22 @@ export function Round() {
   if (!session || !teams.data) return null
   const userId = session.user.id
   const byUser = new Map((profiles.data ?? []).map((p) => [p.id, p]))
-  const total = (tips.data ?? []).filter((t) => t.user_id === userId).reduce((s, t) => s + (t.points ?? 0), 0)
+  const roundIds = new Set(round.map((f) => f.id))
+  const total = (tips.data ?? []).filter((t) => t.user_id === userId && roundIds.has(t.fixture_id))
+    .reduce((s, t) => s + (t.points ?? 0), 0)
+  const card = (f: Fixture) => (
+    <MatchTipCard
+      key={`${f.id}-${tips.dataUpdatedAt}`}
+      fixture={f}
+      home={teams.data.byId.get(f.team_h)!}
+      away={teams.data.byId.get(f.team_a)!}
+      myTip={tips.data?.find((t) => t.fixture_id === f.id && t.user_id === userId)}
+      others={(tips.data ?? []).filter((t) => t.fixture_id === f.id && t.user_id !== userId)}
+      profiles={byUser}
+      userId={userId}
+      onSaved={() => qc.invalidateQueries({ queryKey: ['match_tips', gw] })}
+    />
+  )
 
   return (
     <section>
@@ -60,21 +77,13 @@ export function Round() {
       </div>
       {fixtures.isLoading && <p>Načítavam zápasy…</p>}
       {fixtures.data?.length === 0 && <p>Pre toto kolo zatiaľ nie sú zápasy.</p>}
-      <div className="space-y-3">
-        {fixtures.data?.map((f) => (
-          <MatchTipCard
-            key={`${f.id}-${tips.dataUpdatedAt}`}
-            fixture={f}
-            home={teams.data.byId.get(f.team_h)!}
-            away={teams.data.byId.get(f.team_a)!}
-            myTip={tips.data?.find((t) => t.fixture_id === f.id && t.user_id === userId)}
-            others={(tips.data ?? []).filter((t) => t.fixture_id === f.id && t.user_id !== userId)}
-            profiles={byUser}
-            userId={userId}
-            onSaved={() => qc.invalidateQueries({ queryKey: ['match_tips', gw] })}
-          />
-        ))}
-      </div>
+      <div className="space-y-3">{round.map(card)}</div>
+      {postponed.length > 0 && (
+        <>
+          <h2 className="font-heading mt-8 mb-3 text-2xl">Odložené zápasy</h2>
+          <div className="space-y-3">{postponed.map(card)}</div>
+        </>
+      )}
     </section>
   )
 }
