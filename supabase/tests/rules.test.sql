@@ -1,0 +1,73 @@
+begin;
+select plan(11);
+
+-- seed (as postgres, bypasses RLS)
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-00000000000a', 'a@test.local'),
+  ('00000000-0000-0000-0000-00000000000b', 'b@test.local');
+insert into teams (id, code, name, short_name) values (1, 3, 'Arsenal', 'ARS'), (11, 11, 'Everton', 'EVE');
+insert into gameweeks (id, deadline_time, is_current, is_next, finished) values (13, now(), true, false, false);
+insert into fixtures (id, gameweek_id, kickoff_time, team_h, team_a) values
+  (100, 13, now() + interval '1 day', 11, 1),   -- open
+  (101, 13, now() - interval '1 minute', 11, 1), -- locked
+  (102, null, null, 11, 1);                      -- postponed
+insert into profiles (id, nickname, club_team_id) values
+  ('00000000-0000-0000-0000-00000000000a', 'alfa', 11),
+  ('00000000-0000-0000-0000-00000000000b', 'beta', null);
+insert into club_tip_offers (fixture_id, team_id, tip_keys) values
+  (100, 11, array['player_goal','player_assist','player_yellow','team_red','team_clean_sheet','match_own_goal']);
+
+-- rows that exist before kickoff passed (inserted as postgres)
+insert into match_tips (user_id, fixture_id, kind, outcome) values
+  ('00000000-0000-0000-0000-00000000000a', 101, '1x2', 'H');
+
+-- act as A
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}';
+
+select throws_ok(
+  $$insert into match_tips (user_id, fixture_id, kind, outcome) values ('00000000-0000-0000-0000-00000000000a', 101, '1x2', 'D')
+    on conflict (user_id, fixture_id) do update set outcome = excluded.outcome$$,
+  'TIP_LOCKED', 'tip_after_kickoff_rejected');
+
+select throws_ok(
+  $$insert into match_tips (user_id, fixture_id, kind, outcome) values ('00000000-0000-0000-0000-00000000000a', 102, '1x2', 'D')$$,
+  'TIP_LOCKED', 'tip_null_kickoff_rejected');
+
+select lives_ok(
+  $$insert into match_tips (user_id, fixture_id, kind, home_goals, away_goals, points) values ('00000000-0000-0000-0000-00000000000a', 100, 'exact', 2, 1, 99)$$,
+  'open tip accepted');
+
+select is((select points from match_tips where fixture_id = 100 and user_id = auth.uid()), null::int,
+  'client_cannot_set_points');
+
+-- club tips
+insert into club_tips (user_id, fixture_id, tip_key, player_id) values (auth.uid(), 100, 'player_goal', 5);
+insert into club_tips (user_id, fixture_id, tip_key, player_id) values (auth.uid(), 100, 'player_assist', 5);
+insert into club_tips (user_id, fixture_id, tip_key) values (auth.uid(), 100, 'team_red');
+select throws_ok(
+  $$insert into club_tips (user_id, fixture_id, tip_key) values (auth.uid(), 100, 'match_own_goal')$$,
+  'CLUB_TIP_LIMIT', 'club_tip_fourth_rejected');
+select throws_ok(
+  $$update club_tips set tip_key = 'team_xg_over' where tip_key = 'team_red'$$,
+  'CLUB_TIP_NOT_OFFERED', 'club_tip_not_in_offer_rejected');
+
+-- act as B (no club) – sees nothing of A for the open match
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}';
+select is((select count(*)::int from match_tips where fixture_id = 100), 0, 'other_tip_hidden_before_kickoff');
+select is((select count(*)::int from match_tips where fixture_id = 101), 1, 'other_tip_visible_after_kickoff');
+select throws_ok(
+  $$insert into club_tips (user_id, fixture_id, tip_key) values (auth.uid(), 100, 'team_red')$$,
+  'CLUB_TIP_WRONG_FIXTURE', 'club_tip_wrong_fixture_rejected');
+
+reset role;
+
+select throws_ok(
+  $$update profiles set club_team_id = 11 where nickname = 'beta'$$,
+  '23505', null, 'club_unique');
+select throws_ok(
+  $$update profiles set club_team_id = 1 where nickname = 'alfa'$$,
+  'CLUB_LOCKED', 'club_change_locked');
+
+select * from finish();
+rollback;
