@@ -1,7 +1,7 @@
 {
   "name": "PitchIQ",
   "short_name": "PitchIQ",
-  "description": "Tipuj Premier League s kamošmi a zbieraj IQ body.",
+  "description": "Tipuj Premier League s kamošmi a zbieraj IQ.",
   "lang": "sk",
   "start_url": "/",
   "scope": "/",

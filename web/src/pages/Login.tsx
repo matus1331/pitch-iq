@@ -11,7 +11,7 @@ export function AuthCard({ children, title }: { children: React.ReactNode; title
       <img src="/logo.png" alt="" aria-hidden
         className="pointer-events-none fixed top-1/2 left-1/2 -z-10 size-[min(170vw,120vh)] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-20 mix-blend-screen [mask-image:radial-gradient(closest-side,black_55%,transparent)]" />
       <h1 className="font-heading mb-1 text-center text-6xl leading-none">PitchIQ</h1>
-      <p className="mb-8 text-center text-lg opacity-85">{title}</p>
+      <p className="mb-8 text-center text-lg">{title}</p>
       <div className="rounded-xl bg-white p-5 text-neutral-900 shadow-lg">{children}</div>
     </div>
   )
@@ -37,7 +37,7 @@ export function Login() {
   }
 
   return (
-    <AuthCard title="Tipuj Premier League s kamošmi a zbieraj IQ body.">
+    <AuthCard title="Tipuj Premier League s kamošmi a zbieraj IQ.">
       <Button
         variant="outline"
         className="h-11 w-full text-base"

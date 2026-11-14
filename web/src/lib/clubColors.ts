@@ -5,21 +5,23 @@ export interface ClubColors {
 }
 
 // Keyed by FPL short_name. 2026/27 squad of clubs.
+// secondary is the accent drawn on primary (active tab bar, rings, scarf): it must keep 3:1 against it,
+// so a few clubs use white where their second kit colour would vanish on the first.
 export const CLUB_COLORS: Record<string, ClubColors> = {
-  ARS: { primary: '#db0007', secondary: '#063672', text: '#ffffff' },
+  ARS: { primary: '#db0007', secondary: '#ffffff', text: '#ffffff' },
   AVL: { primary: '#670e36', secondary: '#95bfe5', text: '#ffffff' },
   BOU: { primary: '#b50e12', secondary: '#000000', text: '#ffffff' },
   BRE: { primary: '#c8102e', secondary: '#fbb800', text: '#ffffff' },
   BHA: { primary: '#0057b8', secondary: '#ffcd00', text: '#ffffff' },
   CHE: { primary: '#034694', secondary: '#dba111', text: '#ffffff' },
   COV: { primary: '#0b6fb3', secondary: '#002244', text: '#ffffff' },
-  CRY: { primary: '#1b458f', secondary: '#c4122e', text: '#ffffff' },
+  CRY: { primary: '#1b458f', secondary: '#ffffff', text: '#ffffff' },
   EVE: { primary: '#003399', secondary: '#ffffff', text: '#ffffff' },
   FUL: { primary: '#000000', secondary: '#cc0000', text: '#ffffff' },
   HUL: { primary: '#f5a12d', secondary: '#000000', text: '#000000' },
-  IPS: { primary: '#0044aa', secondary: '#de2c37', text: '#ffffff' },
+  IPS: { primary: '#0044aa', secondary: '#ffffff', text: '#ffffff' },
   LEE: { primary: '#1d428a', secondary: '#ffcd00', text: '#ffffff' },
-  LIV: { primary: '#c8102e', secondary: '#00b2a9', text: '#ffffff' },
+  LIV: { primary: '#c8102e', secondary: '#ffffff', text: '#ffffff' },
   MCI: { primary: '#6cabdd', secondary: '#1c2c5b', text: '#0b1630' },
   MUN: { primary: '#da291c', secondary: '#fbe122', text: '#ffffff' },
   NEW: { primary: '#241f20', secondary: '#41b6e6', text: '#ffffff' },

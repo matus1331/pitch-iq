@@ -1,3 +1,6 @@
+import { BookOpen, LogOut } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CardsSkeleton } from '@/components/Skeleton'
 import { badgeUrl } from '@/lib/clubColors'
 import { type Profile as ProfileRow, type Team, useDuels, useIqRows } from '@/lib/data'
 import { levelFor, MAX_LEVEL, TITLES } from '@shared/level.ts'
@@ -7,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 export function Profile({ profile, club }: { profile: ProfileRow; club: Team | undefined }) {
   const iq = useIqRows()
   const duels = useDuels()
-  if (!iq.data || !duels.data) return <p>Načítavam…</p>
+  if (!iq.data || !duels.data) return <CardsSkeleton count={4} />
   const s = iqSummary(iq.data.individual, iq.data.club, profile.id)
   const { total, peak } = playerIq(iq.data.individual, iq.data.club, duels.data, profile.id)
   const rec = duelRecord(duels.data, profile.id)
@@ -53,7 +56,7 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
-          <p className="text-sm text-neutral-500">IQ body spolu</p>
+          <p className="text-sm text-neutral-500">IQ spolu</p>
           <p className="scoreboard text-4xl">{total}</p>
         </div>
         <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
@@ -61,7 +64,7 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
           <p className="scoreboard text-4xl">{s.lastRoundIndividual + s.lastRoundClub + lastDuel}</p>
           {s.lastRound && (
             <p className="text-xs text-neutral-500">
-              výsledky {s.lastRoundIndividual} · klub {s.lastRoundClub}{lastDuel ? ` · duel ${lastDuel > 0 ? '+' : ''}${lastDuel}` : ''}
+              zápasy {s.lastRoundIndividual} · klub {s.lastRoundClub}{lastDuel ? ` · duel ${lastDuel > 0 ? '+' : ''}${lastDuel}` : ''}
             </p>
           )}
         </div>
@@ -70,7 +73,7 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
       <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
         <h2 className="mb-2 font-semibold">Duely</h2>
         {rec.won + rec.drawn + rec.lost === 0 ? (
-          <p className="text-sm text-neutral-600">Zatiaľ žiadny odohraný duel. Kamoša vyzveš v Tabuľkách tlačidlom Vyzvať.</p>
+          <p className="text-sm text-neutral-600">Zatiaľ žiadny odohraný duel. Kamoša vyzveš v záložke Duely.</p>
         ) : (
           <dl className="grid grid-cols-3 gap-2 text-center">
             <div><dt className="text-xs text-neutral-500">Bilancia V–R–P</dt><dd className="scoreboard text-2xl">{rec.won}–{rec.drawn}–{rec.lost}</dd></div>
@@ -96,9 +99,14 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
         </ol>
       </div>
 
-      <button className="text-sm underline underline-offset-4 opacity-80" onClick={() => supabase.auth.signOut()}>
-        Odhlásiť sa
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/pravidla" className="inline-flex items-center gap-2 font-semibold underline underline-offset-4">
+          <BookOpen className="size-4" aria-hidden /> Ako sa hrá
+        </Link>
+        <button className="inline-flex items-center gap-2 text-sm underline underline-offset-4" onClick={() => supabase.auth.signOut()}>
+          <LogOut className="size-4" aria-hidden /> Odhlásiť sa
+        </button>
+      </div>
     </section>
   )
 }

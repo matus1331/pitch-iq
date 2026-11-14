@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { badgeUrl } from '@/lib/clubColors'
 import type { Fixture, Profile, Team } from '@/lib/data'
@@ -39,17 +40,27 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
   const [h, setH] = useState(myTip?.home_goals?.toString() ?? '')
   const [a, setA] = useState(myTip?.away_goals?.toString() ?? '')
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
 
   async function save(tip: Partial<MatchTip>) {
-    setError(null); setSaved(false)
+    setError(null)
     const { error } = await supabase.from('match_tips').upsert({
       user_id: userId, fixture_id: fixture.id, outcome: null, home_goals: null, away_goals: null, ...tip,
     })
     if (error) return setError(errorText(error))
-    setSaved(true)
+    toast.success(`Tip uložený: ${home.short_name} – ${away.short_name}`, { id: `tip-${fixture.id}` })
     onSaved()
   }
+
+  // A full exact score saves itself, the same way a tap on 1 / X / 2 does.
+  const goals = (v: string) => (/^\d{1,2}$/.test(v) && Number(v) <= 20 ? Number(v) : null)
+  const [hg, ag] = [goals(h), goals(a)]
+  const changed = hg != null && ag != null && !(myTip?.kind === 'exact' && myTip.home_goals === hg && myTip.away_goals === ag)
+  useEffect(() => {
+    if (mode !== 'exact' || !changed || state !== 'open') return
+    const t = setTimeout(() => save({ kind: 'exact', home_goals: hg!, away_goals: ag! }), 700)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, hg, ag, changed, state])
 
   const score = state === 'scored' || fixture.started
     ? `${fixture.team_h_score ?? 0} : ${fixture.team_a_score ?? 0}`
@@ -70,7 +81,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
       </header>
       <p className="px-4 pt-1 text-center text-xs text-neutral-500">
         {state === 'postponed' ? 'Zápas je odložený, termín zatiaľ nie je známy.'
-          : `${kickoffFmt.format(new Date(fixture.kickoff_time!))}${state === 'scored' ? (fixture.finished ? ' · koniec' : ' · IQ body sú predbežné') : ''}`}
+          : `${kickoffFmt.format(new Date(fixture.kickoff_time!))}${state === 'scored' ? (fixture.finished ? ' · koniec' : ' · IQ sú predbežné') : ''}`}
       </p>
 
       <div className="p-4">
@@ -100,19 +111,18 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
               </div>
             ) : (
               <form className="swap-in flex items-center justify-center gap-3"
-                onSubmit={(e) => { e.preventDefault(); save({ kind: 'exact', home_goals: Number(h), away_goals: Number(a) }) }}>
+                onSubmit={(e) => { e.preventDefault(); if (changed) save({ kind: 'exact', home_goals: hg!, away_goals: ag! }) }}>
                 <input aria-label={`Góly ${home.name}`} inputMode="numeric" type="number" min={0} max={20} required value={h}
                   onChange={(e) => setH(e.target.value)} className="scoreboard h-14 w-16 rounded-lg border-2 border-neutral-300 text-center text-3xl" />
                 <span className="scoreboard text-2xl">:</span>
                 <input aria-label={`Góly ${away.name}`} inputMode="numeric" type="number" min={0} max={20} required value={a}
                   onChange={(e) => setA(e.target.value)} className="scoreboard h-14 w-16 rounded-lg border-2 border-neutral-300 text-center text-3xl" />
-                <Button type="submit" className="h-11">Uložiť tip</Button>
               </form>
             )}
             <p className="mt-2 h-5 text-center text-sm" aria-live="polite">
               {error ? <span className="text-red-700">{error}</span>
-                : saved ? <span className="text-green-800">Tip uložený</span>
-                : myTip ? <span className="text-neutral-500">Tvoj tip: {tipLabel(myTip)}</span> : null}
+                : myTip ? <span className="text-neutral-600">Tvoj tip: <b>{tipLabel(myTip)}</b> · uloží sa sám, meniť ho môžeš do výkopu</span>
+                : <span className="text-neutral-500">{mode === 'exact' ? 'Zadaj oba počty gólov, tip sa uloží sám.' : 'Ťukni na tip, uloží sa hneď.'}</span>}
             </p>
           </>
         ) : state === 'postponed' ? (

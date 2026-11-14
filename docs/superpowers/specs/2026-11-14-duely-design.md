@@ -23,7 +23,7 @@ Duel nepridáva nové tipy, len zvyšuje stávku na tipy, ktoré sa zadávajú a
   remíza 0. **Bonus za odvahu:** ak vyhrá hráč s nižším levelom (level pred kolom duelu), dostane navyše
   polovicu stávky (zaokrúhlené nadol); bonus sa nikomu neberie.
 - **Level nikdy neklesne:** level sa počíta z najvyššieho IQ, aké hráč kedy mal. IQ môže prehrou klesnúť.
-- **Tabuľky:** hlavné tabuľky ostávajú len z tipov. Tabuľka „Duely“ ukazuje celkové IQ hráčov a nad ňou
+- **Tabuľky:** hlavné tabuľky ostávajú len z tipov. Duely majú vlastnú záložku: celkové IQ hráčov a nad ním
   rozpis vlastného IQ po kategóriách: IQ, koľko je v dueloch, koľko je voľné.
   IQ z duelov sa započítava do celkového IQ a levelu na profile.
 - **Profil:** bilancia duelov (výhry–remízy–prehry), najdlhšia séria výhier.

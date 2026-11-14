@@ -30,10 +30,10 @@ export function ChooseClub() {
     <div className="mx-auto max-w-xl px-4 py-8">
       <div className="scarf mb-6 h-3 rounded-sm" aria-hidden />
       <h1 className="font-heading text-4xl leading-none">Vyber si klub</h1>
-      <p className="mt-2 mb-6 opacity-85">
+      <p className="mt-2 mb-6">
         Za tento klub budeš tipovať celú sezónu. Každý klub môže mať len jedného hráča a neskôr sa nedá zmeniť.
       </p>
-      {teams.isLoading && <p>Načítavam kluby…</p>}
+      {teams.isLoading && <p role="status">Načítavam kluby…</p>}
       {teams.data?.list.length === 0 && <p>Kluby ešte nie sú načítané. Spusti synchronizáciu s FPL.</p>}
       <ul className="grid grid-cols-4 gap-2 sm:grid-cols-5">
         {teams.data?.list.map((t) => {

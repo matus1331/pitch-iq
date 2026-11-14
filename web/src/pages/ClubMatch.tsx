@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { CardsSkeleton } from '@/components/Skeleton'
 import { CATALOG_BY_KEY } from '@shared/catalog.ts'
 import { type ClubTip, ClubTipField, type Player } from '@/components/ClubTipField'
 import { badgeUrl } from '@/lib/clubColors'
@@ -41,14 +43,15 @@ export function ClubMatch({ profile }: { profile: Profile }) {
   })
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['club', club] })
-  async function run(p: PromiseLike<{ error: unknown }>) {
+  async function run(p: PromiseLike<{ error: unknown }>, done: string) {
     setError(null)
     const { error } = await p
     if (error) setError(errorText(error))
+    else toast.success(done)
     refresh()
   }
 
-  if (!teams.data || !data.data) return <p>Načítavam…</p>
+  if (!teams.data || !data.data) return <CardsSkeleton />
   const { fixtures, offers, tips, players } = data.data
   const upcoming = fixtures.filter((f) => !f.started)
   const played = fixtures.filter((f) => f.started)
@@ -57,7 +60,7 @@ export function ClubMatch({ profile }: { profile: Profile }) {
     <section className="space-y-8">
       <div>
         <h1 className="font-heading text-4xl leading-none">Môj klub</h1>
-        <p className="opacity-85">Šestica tipov sa losuje na každé kolo a je rovnaká pre všetkých hráčov. Vyber si z nej tri. V ďalšom kole dostaneš novú šesticu.</p>
+        <p>Šestica tipov sa losuje na každé kolo a je rovnaká pre všetkých hráčov. Vyber si z nej tri. V ďalšom kole dostaneš novú šesticu.</p>
       </div>
       {error && <p role="alert" className="rounded-lg bg-white p-3 text-red-700">{error}</p>}
       {fixtures.length === 0 && <p>Tvoj klub v tomto ani nasledujúcom kole nehrá.</p>}
@@ -71,13 +74,13 @@ export function ClubMatch({ profile }: { profile: Profile }) {
         const total = mine.reduce((s, t) => s + (t.points ?? 0), 0)
         return (
           <div key={f.id}>
-            {i === 0 && upcoming.length > 0 && <h2 className="font-heading mb-3 text-3xl leading-none opacity-90">{upcoming.length > 1 ? 'Nadchádzajúce zápasy' : 'Nadchádzajúci zápas'}</h2>}
-            {i === upcoming.length && <h2 className="font-heading mb-3 text-3xl leading-none opacity-90">Odohrané</h2>}
+            {i === 0 && upcoming.length > 0 && <h2 className="font-heading mb-3 text-3xl leading-none">{upcoming.length > 1 ? 'Nadchádzajúce zápasy' : 'Nadchádzajúci zápas'}</h2>}
+            {i === upcoming.length && <h2 className="font-heading mb-3 text-3xl leading-none">Odohrané</h2>}
             <div className="mb-3 flex items-center gap-3">
               <img src={badgeUrl(opp.code)} alt="" className="size-10 rounded-full bg-white p-1" />
               <div>
                 <h2 className="font-heading text-2xl leading-tight">{home ? 'Doma' : 'Vonku'} proti {opp.name}</h2>
-                <p className="text-sm opacity-85">
+                <p className="text-sm">
                   {f.kickoff_time ? kickoffFmt.format(new Date(f.kickoff_time)) : 'Termín zatiaľ nie je známy'}
                   {state === 'scored' && ` · ${f.team_h_score}:${f.team_a_score} · tvoje IQ ${total}`}
                 </p>
@@ -103,8 +106,8 @@ export function ClubMatch({ profile }: { profile: Profile }) {
                       players={players}
                       editable={state === 'open'}
                       full={mine.length >= 3}
-                      onSave={(v) => run(supabase.from('club_tips').upsert({ user_id: profile.id, fixture_id: f.id, tip_key: key, ...v }))}
-                      onRemove={() => run(supabase.from('club_tips').delete().match({ user_id: profile.id, fixture_id: f.id, tip_key: key }))}
+                      onSave={(v) => run(supabase.from('club_tips').upsert({ user_id: profile.id, fixture_id: f.id, tip_key: key, ...v }), 'Klubový tip uložený')}
+                      onRemove={() => run(supabase.from('club_tips').delete().match({ user_id: profile.id, fixture_id: f.id, tip_key: key }), 'Klubový tip zrušený')}
                     />
                   )
                 })}
@@ -131,7 +134,7 @@ function PickCounter({ picked }: { picked: number }) {
           ))}
         </span>
       </div>
-      <p className="mt-1 text-sm opacity-85">
+      <p className="mt-1 text-sm">
         {picked < 3
           ? 'Zo šiestich tipov si vyber tri. Body dostaneš len za tie, ktoré vyberieš.'
           : 'Máš všetky tri. Ak chceš iný tip, najprv jeden z vybraných zruš.'}

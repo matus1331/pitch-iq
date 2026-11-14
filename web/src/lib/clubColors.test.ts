@@ -15,6 +15,12 @@ describe('CLUB_COLORS', () => {
   })
 })
 
+describe('club colours stay readable', () => {
+  it('the accent (active tab bar, selected ring) stands out from primary, 3:1 for every club', () => {
+    for (const [club, c] of Object.entries(CLUB_COLORS)) expect(contrastRatio(c.secondary, c.primary), club).toBeGreaterThanOrEqual(3)
+  })
+})
+
 describe('contrastRatio', () => {
   it('is 21 for black on white', () => {
     expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 1)

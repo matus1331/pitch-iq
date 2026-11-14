@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { levelFor } from '@shared/level.ts'
 import { Button } from '@/components/ui/button'
 import { type Duel, type DuelCategory, type Profile, useDuels, useIqRows, useProfiles } from '@/lib/data'
@@ -33,25 +34,28 @@ const categoryLabel = (c: DuelCategory) => DUEL_CATEGORIES.find((x) => x.id === 
 
 const bonus = (stake: number) => stake + Math.floor(stake / 2)
 
-/** The player's duels in the round on screen: answer challenges, follow the live score, see results. */
-export function DuelPanel({ gw, userId }: { gw: number; userId: string }) {
+/** The player's duels: answer challenges, follow the live score, see the latest results. */
+export function DuelPanel({ userId }: { userId: string }) {
   const qc = useQueryClient()
   const profiles = useProfiles()
   const s = useDuelStanding(userId)
   const [error, setError] = useState<string | null>(null)
   if (!s || !profiles.data) return null
   const name = (id: string) => profiles.data.find((p) => p.id === id)?.nickname ?? '?'
-  // This round's duels, plus challenges still waiting for my answer whatever round they are for.
-  const mine = s.duels.filter((d) => (d.challenger_id === userId || d.opponent_id === userId) && d.status !== 'cancelled'
-    && (d.gameweek_id === gw || (d.status === 'pending' && d.opponent_id === userId)))
+  // Open duels, plus how the most recent round's duels ended.
+  const all = s.duels.filter((d) => (d.challenger_id === userId || d.opponent_id === userId) && d.status !== 'cancelled')
+  const last = Math.max(0, ...all.filter((d) => d.status === 'finished').map((d) => d.gameweek_id))
+  const mine = all.filter((d) => d.status === 'pending' || d.status === 'accepted' || d.gameweek_id === last)
+    .sort((a, b) => Number(b.status === 'pending' && b.opponent_id === userId) - Number(a.status === 'pending' && a.opponent_id === userId))
   if (!mine.length) return null
 
-  const roundIq = (u: string, c: DuelCategory) =>
-    s.rows[c].filter((r) => r.user_id === u && r.gameweek_id === gw).reduce((n, r) => n + r.points, 0)
-  async function call(p: PromiseLike<{ error: unknown }>) {
+  const roundIq = (u: string, d: Duel) =>
+    s.rows[d.category].filter((r) => r.user_id === u && r.gameweek_id === d.gameweek_id).reduce((n, r) => n + r.points, 0)
+  async function call(p: PromiseLike<{ error: unknown }>, done: string) {
     setError(null)
     const { error } = await p
     if (error) setError(errorText(error))
+    else toast.success(done)
     qc.invalidateQueries({ queryKey: ['duels'] })
   }
 
@@ -66,9 +70,9 @@ export function DuelPanel({ gw, userId }: { gw: number; userId: string }) {
           <div key={d.id} className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
             <p className="text-sm text-neutral-500">Duel s {name(rival)} o {d.stake} IQ v kategórii {categoryLabel(d.category)} · {d.gameweek_id}. kolo</p>
             <DuelBody d={d} rival={name(rival)} iChallenged={iChallenged} underdog={underdog}
-              live={[roundIq(userId, d.category), roundIq(rival, d.category)]} free={s.cat(userId, d.category).free}
-              onRespond={(accept) => call(supabase.rpc('respond_duel', { p_duel: d.id, p_accept: accept }))}
-              onCancel={() => call(supabase.rpc('cancel_duel', { p_duel: d.id }))} />
+              live={[roundIq(userId, d), roundIq(rival, d)]} free={s.cat(userId, d.category).free}
+              onRespond={(accept) => call(supabase.rpc('respond_duel', { p_duel: d.id, p_accept: accept }), accept ? 'Duel prijatý' : 'Duel odmietnutý')}
+              onCancel={() => call(supabase.rpc('cancel_duel', { p_duel: d.id }), 'Výzva zrušená')} />
           </div>
         )
       })}
@@ -153,6 +157,7 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
     setBusy(false)
     if (error) return setError(errorText(error))
     qc.invalidateQueries({ queryKey: ['duels'] })
+    toast.success(`Výzva odoslaná hráčovi ${opponent.nickname}`)
     setOpen(false)
   }
 

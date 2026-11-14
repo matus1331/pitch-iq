@@ -58,7 +58,7 @@ export function duelRecord(duels: Duel[], userId: string) {
 }
 
 export const DUEL_CATEGORIES: { id: DuelCategory; label: string }[] = [
-  { id: 'individual', label: 'Výsledky' },
+  { id: 'individual', label: 'Zápasy' },
   { id: 'club', label: 'Klub' },
 ]
 

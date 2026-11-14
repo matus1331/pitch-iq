@@ -29,7 +29,7 @@ const MESSAGES: Record<string, string> = {
   DUEL_OPPONENT_LIMIT: 'Súper už má v tomto kole 2 duely.',
   DUEL_STAKE_TOO_HIGH: 'Na takú stávku nemáš v tejto kategórii dosť voľného IQ.',
   DUEL_NOT_ENOUGH_IQ: 'V tejto kategórii nemáš aspoň 5 voľného IQ.',
-  DUEL_CATEGORY_INVALID: 'Vyber, či hráte o Výsledky, alebo o Klub.',
+  DUEL_CATEGORY_INVALID: 'Vyber, či hráte o Zápasy, alebo o Klub.',
   DUEL_OPPONENT_NO_IQ: 'Súper nemá v tejto kategórii dosť voľného IQ na takú stávku.',
   DUEL_NOT_YOURS: 'Tento duel nie je tvoj.',
   DUEL_NOT_PENDING: 'Na tento duel sa už odpovedalo.',
