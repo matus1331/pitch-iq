@@ -57,7 +57,7 @@ export function Standings() {
       {board === 'duels' && (
         <p className="mb-3 text-sm opacity-85">Čistý zisk IQ z duelov. Kamoša vyzveš tlačidlom Vyzvať pri jeho mene.</p>
       )}
-      {standing && standing.free < MIN_STAKE && (
+      {board === 'duels' && standing && standing.free < MIN_STAKE && (
         <p className="mb-3 rounded-lg bg-black/25 p-3 text-sm">
           Duely máš zamknuté, kým nebudeš mať aspoň {MIN_STAKE} voľného IQ (najnižšia stávka). Teraz máš {Math.max(0, standing.free)}.
           Hráčov s menej ako {MIN_STAKE} IQ tiež nejde vyzvať.
@@ -80,7 +80,7 @@ export function Standings() {
                 {rec && <span className="block text-xs font-normal text-neutral-500">{rec.won} V · {rec.drawn} R · {rec.lost} P</span>}
               </span>
               {lv != null && <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">Lv {lv}</span>}
-              {!me && session && byId.get(r.user_id) && <ChallengeButton opponent={byId.get(r.user_id)!} userId={session.user.id} />}
+              {board === 'duels' && !me && session && byId.get(r.user_id) && <ChallengeButton opponent={byId.get(r.user_id)!} userId={session.user.id} />}
               <span className="scoreboard w-10 text-right text-2xl">{board === 'duels' && r.points > 0 ? `+${r.points}` : r.points}</span>
             </li>
           )

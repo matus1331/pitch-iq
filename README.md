@@ -85,7 +85,7 @@ Simuluje sa kolo, ktoré sa práve tipuje. Iné kolo zvolíš takto: `npm run si
 npm run sim:reset
 ```
 
-Vrátenie zmaže body zo simulovaného kola a vráti zápasy na skutočné dáta FPL. Tipy ostanú, duely kola sa vrátia do stavu „prijatý“. Výzvy, ktoré počas simulácie prepadli, ostanú prepadnuté. Simulácia funguje len lokálne. V produkcii sa nikdy nezapne, lebo nikto nenastaví `sim_round` v `app_config`.
+Vrátenie vráti zápasy na skutočné dáta FPL a zmaže body zo všetkých zápasov, ktoré sa ešte naozaj nehrali. Keď spustíš simuláciu iného kola, predchádzajúca sa najprv sama vráti, takže body z viacerých simulácií sa nesčítajú. Tipy ostanú, duely kola sa vrátia do stavu „prijatý“. Výzvy, ktoré počas simulácie prepadli, ostanú prepadnuté. Simulácia funguje len lokálne. V produkcii sa nikdy nezapne, lebo nikto nenastaví `sim_round` v `app_config`.
 
 ## Nasadenie (všetko zadarmo)
 
