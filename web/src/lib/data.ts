@@ -71,3 +71,22 @@ export const useIqRows = () =>
       return { individual: must(individual) as RoundRow[], club: must(club) as RoundRow[] }
     },
   })
+
+export interface Duel {
+  id: number
+  gameweek_id: number
+  challenger_id: string
+  opponent_id: string
+  stake: number
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'finished'
+  challenger_iq: number | null
+  opponent_iq: number | null
+  challenger_delta: number | null
+  opponent_delta: number | null
+}
+
+export const useDuels = () =>
+  useQuery({
+    queryKey: ['duels'],
+    queryFn: async () => must(await supabase.from('duels').select('*').order('created_at')) as Duel[],
+  })

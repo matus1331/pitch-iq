@@ -1,11 +1,12 @@
 # PitchIQ
 
-Bezplatná tipovačka Premier League pre partiu kamošov. Má dve súťaže:
+Bezplatná tipovačka Premier League pre partiu kamošov. Hráči zbierajú IQ body a stúpajú v leveloch (1–25). Súťaže:
 
-- **tipovanie výsledkov**: za správneho víťaza 2 body, za presný výsledok 5 bodov,
-- **klubová súťaž**: pri každom zápase svojho klubu vyberieš 3 tipy z vylosovanej šestice.
+- **tipovanie výsledkov**: za správneho víťaza 2 IQ, za presný výsledok 5 IQ,
+- **klubová súťaž**: pri každom zápase svojho klubu vyberieš 3 tipy zo šestice, ktorá sa losuje raz na kolo pre všetkých,
+- **duely**: vyzveš kamoša o 5, 10 alebo 20 IQ; kto naberie v kole viac IQ, berie stávku.
 
-Dáta sa berú z oficiálneho FPL API zadarmo. Body sa počítajú automaticky každých 10 minút.
+Dáta sa berú z oficiálneho FPL API zadarmo. IQ body aj duely sa vyhodnocujú automaticky každých 10 minút.
 
 Návrh je v `docs/superpowers/specs/`, plán implementácie v `docs/superpowers/plans/`.
 

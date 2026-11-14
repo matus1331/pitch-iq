@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { levelFor, MAX_LEVEL } from './level'
+import { iqTotals, levelFor, MAX_LEVEL } from '@shared/level.ts'
 
 describe('levelFor', () => {
   it('starts at level 1 as a Rookie', () => {
@@ -23,5 +23,24 @@ describe('levelFor', () => {
     expect(levelFor(791)).toMatchObject({ level: 24 })
     expect(levelFor(792)).toMatchObject({ level: 25, title: 'PitchIQ Legend', needed: null })
     expect(levelFor(5000)).toMatchObject({ level: 25, needed: null })
+  })
+})
+
+describe('iqTotals', () => {
+  it('adds tips and duels round by round', () => {
+    expect(iqTotals([{ gameweek_id: 1, points: 12 }, { gameweek_id: 2, points: 8 }], [{ gameweek_id: 2, points: 10 }]))
+      .toEqual({ total: 30, peak: 30 })
+  })
+  it('keeps the peak when a lost duel lowers the total', () => {
+    expect(iqTotals([{ gameweek_id: 1, points: 20 }, { gameweek_id: 2, points: 4 }], [{ gameweek_id: 2, points: -10 }]))
+      .toEqual({ total: 14, peak: 24 })
+  })
+  it('counts the round tips before the duel result of that round', () => {
+    // 10 after round 1, +6 tips in round 2 peaks at 16, then the duel takes 20.
+    expect(iqTotals([{ gameweek_id: 1, points: 10 }, { gameweek_id: 2, points: 6 }], [{ gameweek_id: 2, points: -20 }]))
+      .toEqual({ total: -4, peak: 16 })
+  })
+  it('is zero for a new player', () => {
+    expect(iqTotals([], [])).toEqual({ total: 0, peak: 0 })
   })
 })

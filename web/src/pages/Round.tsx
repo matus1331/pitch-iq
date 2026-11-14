@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { DuelPanel } from '@/components/Duels'
 import { type MatchTip, MatchTipCard } from '@/components/MatchTipCard'
 import { type Fixture, useGameweeks, useProfiles, useSession, useTeams } from '@/lib/data'
 import { defaultRound, splitRound } from '@/lib/roundView'
@@ -75,6 +76,7 @@ export function Round() {
           </div>
         )}
       </div>
+      {gw != null && <DuelPanel gw={gw} userId={userId} />}
       {fixtures.isLoading && <p>Načítavam zápasy…</p>}
       {fixtures.data?.length === 0 && <p>Pre toto kolo zatiaľ nie sú zápasy.</p>}
       <div className="space-y-3">{round.map(card)}</div>

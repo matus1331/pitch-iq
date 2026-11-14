@@ -1,3 +1,5 @@
+import { iqTotals } from '@shared/level.ts'
+import type { Duel } from './data'
 export interface Row { user_id: string; nickname: string; points: number }
 export interface RoundRow extends Row { gameweek_id: number }
 
@@ -30,4 +32,27 @@ export function iqSummary(individual: RoundRow[], club: RoundRow[], userId: stri
     lastRoundIndividual: lastRound == null ? 0 : mine(individual, lastRound),
     lastRoundClub: lastRound == null ? 0 : mine(club, lastRound),
   }
+}
+
+const mineDelta = (d: Duel, userId: string) => (d.challenger_id === userId ? d.challenger_delta : d.opponent_delta) ?? 0
+const myFinished = (duels: Duel[], userId: string) =>
+  duels.filter((d) => d.status === 'finished' && (d.challenger_id === userId || d.opponent_id === userId))
+    .sort((a, b) => a.gameweek_id - b.gameweek_id)
+
+/** Current IQ (tips + duel results) and the peak the level is taken from. */
+export function playerIq(individual: RoundRow[], club: RoundRow[], duels: Duel[], userId: string) {
+  return iqTotals(
+    [...individual, ...club].filter((r) => r.user_id === userId),
+    myFinished(duels, userId).map((d) => ({ gameweek_id: d.gameweek_id, points: mineDelta(d, userId) })),
+  )
+}
+
+export function duelRecord(duels: Duel[], userId: string) {
+  let won = 0, drawn = 0, lost = 0, net = 0, streak = 0, bestStreak = 0
+  for (const d of myFinished(duels, userId)) {
+    const delta = mineDelta(d, userId)
+    net += delta
+    if (delta > 0) { won++; bestStreak = Math.max(bestStreak, ++streak) } else { streak = 0; if (delta < 0) lost++; else drawn++ }
+  }
+  return { won, drawn, lost, net, bestStreak }
 }

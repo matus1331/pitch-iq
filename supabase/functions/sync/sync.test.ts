@@ -193,3 +193,54 @@ Deno.test('everyone gets the same six tips in a round, and a different six next 
   const [a] = thisRound, [b] = nextRound
   assertEquals(a.split(',').filter((k) => b.split(',').includes(k)), [])
 })
+
+async function addUser(nickname: string, club: number | null): Promise<string> {
+  const { data } = await db.auth.admin.createUser({ email: `${nickname}@test.local`, password: 'heslo12345', email_confirm: true })
+  await ok(db.from('profiles').insert({ id: data.user!.id, nickname, club_team_id: club }))
+  return data.user!.id
+}
+
+Deno.test('finished round settles accepted duels, underdog winner gets a bonus', async () => {
+  const { alfa } = await reset()
+  const beta = await addUser('beta', ARS)
+  // An older round (outside the rescoring window): beta banks 60 IQ (level 5), alfa nothing (level 1).
+  await runSync(db, api([fixture(1002, { event: GW - 2 }), fixture(1001)]))
+  await ok(db.from('match_tips').insert({ user_id: beta, fixture_id: 1002, kind: '1x2', outcome: 'A', points: 60, is_final: true }))
+  // Round GW (EVE 2:1 ARS): alfa hits the exact score, beta misses.
+  await ok(db.from('match_tips').insert([
+    { user_id: alfa, fixture_id: 1001, kind: 'exact', home_goals: 2, away_goals: 1 },
+    { user_id: beta, fixture_id: 1001, kind: '1x2', outcome: 'A' },
+  ]))
+  await ok(db.from('duels').insert({ gameweek_id: GW, challenger_id: beta, opponent_id: alfa, stake: 10, status: 'accepted' }))
+  await runSync(db, api([fixture(1002, { event: GW - 2 }), fixture(1001)]))
+  const { data } = await db.from('duels').select('*').single()
+  assertEquals(
+    [data!.status, data!.challenger_iq, data!.opponent_iq, data!.challenger_delta, data!.opponent_delta],
+    ['finished', 0, 5, -10, 15],
+  )
+  await runSync(db, api([fixture(1002, { event: GW - 2 }), fixture(1001)]))
+  assertEquals((await db.from('duels').select('opponent_delta').single()).data!.opponent_delta, 15) // settled once
+})
+
+Deno.test('a draw moves no IQ, an unfinished round waits', async () => {
+  const { alfa } = await reset()
+  const beta = await addUser('beta', ARS)
+  await ok(db.from('gameweeks').upsert({ id: GW }))
+  await ok(db.from('duels').insert({ gameweek_id: GW, challenger_id: alfa, opponent_id: beta, stake: 5, status: 'accepted' }))
+  await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false })]))
+  assertEquals((await db.from('duels').select('status').single()).data!.status, 'accepted')
+  await runSync(db, api([fixture(1001)]))
+  const { data } = await db.from('duels').select('status, challenger_delta, opponent_delta').single()
+  assertEquals([data!.status, data!.challenger_delta, data!.opponent_delta], ['finished', 0, 0])
+})
+
+Deno.test('an unanswered challenge expires once the round starts', async () => {
+  const { alfa } = await reset()
+  const beta = await addUser('beta', ARS)
+  await ok(db.from('gameweeks').upsert({ id: GW }))
+  await ok(db.from('duels').insert({ gameweek_id: GW, challenger_id: alfa, opponent_id: beta, stake: 5 }))
+  await runSync(db, api([fixture(1001, { kickoff_time: future, started: false, finished_provisional: false, finished: false })]))
+  assertEquals((await db.from('duels').select('status').single()).data!.status, 'pending')
+  await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false })]))
+  assertEquals((await db.from('duels').select('status').single()).data!.status, 'expired')
+})

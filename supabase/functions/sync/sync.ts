@@ -1,4 +1,5 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { iqTotals, levelFor } from '../_shared/level.ts'
 import { drawOffer } from '../_shared/rotation.ts'
 import { type PlayerStats, scoreClubTip, scoreMatchTip } from '../_shared/scoring.ts'
 
@@ -141,7 +142,10 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
   const done = fixtures.filter((f) => f.finished_provisional && f.kickoff_time != null
     && f.gameweek_id != null && f.gameweek_id >= current - 1 && f.gameweek_id <= current
     && f.team_h_score != null && f.team_a_score != null)
-  if (!done.length) return { fixtures: fixtures.length, scored }
+  if (!done.length) {
+    await settleDuels(db, fixtures)
+    return { fixtures: fixtures.length, scored }
+  }
   const clubOf = new Map<string, number>(
     must(await db.from('profiles').select('id, club_team_id')).map((p: Json) => [p.id, p.club_team_id]),
   )
@@ -179,5 +183,45 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
     })))
     scored += clubTips.length
   }
+  await settleDuels(db, fixtures)
   return { fixtures: fixtures.length, scored }
+}
+
+// 7. duels: unanswered challenges expire when their round starts; accepted ones settle once the round is over.
+async function settleDuels(db: SupabaseClient, fixtures: FixtureRow[]) {
+  const started = new Set(fixtures.filter((f) => f.started).map((f) => f.gameweek_id))
+  const over = new Set(fixtures.filter((f) => f.gameweek_id != null).map((f) => f.gameweek_id))
+  for (const f of fixtures) if (f.gameweek_id != null && !f.finished) over.delete(f.gameweek_id)
+
+  const open: Json[] = must(await db.from('duels').select('*').in('status', ['pending', 'accepted']))
+  const expired = open.filter((d) => d.status === 'pending' && started.has(d.gameweek_id)).map((d) => d.id)
+  if (expired.length) must(await db.from('duels').update({ status: 'expired' }).in('id', expired))
+  const due = open.filter((d) => d.status === 'accepted' && over.has(d.gameweek_id)).sort((a, b) => a.gameweek_id - b.gameweek_id)
+  if (!due.length) return
+
+  const users = [...new Set(due.flatMap((d) => [d.challenger_id, d.opponent_id]))]
+  const tips: Json[] = [
+    ...must(await db.from('leaderboard_individual').select('user_id, gameweek_id, points').in('user_id', users)),
+    ...must(await db.from('leaderboard_club').select('user_id, gameweek_id, points').in('user_id', users)),
+  ]
+  const settled: Json[] = must(await db.from('duels').select('*').eq('status', 'finished'))
+  const steps = (user: string, before: number) => iqTotals(
+    tips.filter((t) => t.user_id === user && t.gameweek_id < before),
+    settled.filter((d) => d.gameweek_id < before && (d.challenger_id === user || d.opponent_id === user))
+      .map((d) => ({ gameweek_id: d.gameweek_id, points: d.challenger_id === user ? d.challenger_delta : d.opponent_delta })),
+  )
+  const roundIq = (user: string, gw: number) =>
+    tips.filter((t) => t.user_id === user && t.gameweek_id === gw).reduce((n, t) => n + t.points, 0)
+
+  for (const d of due) {
+    const c = roundIq(d.challenger_id, d.gameweek_id), o = roundIq(d.opponent_id, d.gameweek_id)
+    const levelBefore = (u: string) => levelFor(steps(u, d.gameweek_id).peak).level
+    // The winner takes the stake; an underdog winner (lower level before the round) gets half again on top.
+    const win = (winner: string, loser: string) => d.stake + (levelBefore(winner) < levelBefore(loser) ? Math.floor(d.stake / 2) : 0)
+    const challenger_delta = c > o ? win(d.challenger_id, d.opponent_id) : c < o ? -d.stake : 0
+    const opponent_delta = o > c ? win(d.opponent_id, d.challenger_id) : o < c ? -d.stake : 0
+    const row = { status: 'finished', challenger_iq: c, opponent_iq: o, challenger_delta, opponent_delta }
+    must(await db.from('duels').update(row).eq('id', d.id).eq('status', 'accepted'))
+    settled.push({ ...d, ...row })
+  }
 }

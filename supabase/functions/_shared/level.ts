@@ -25,3 +25,22 @@ export function levelFor(iq: number) {
     needed: level === MAX_LEVEL ? null : threshold(level + 1) - threshold(level),
   }
 }
+
+export interface IqStep { gameweek_id: number; points: number }
+
+/**
+ * Current IQ and the highest IQ ever reached. Levels come from the peak, so a lost duel never
+ * costs a level. Within a round the tips count first, then the duel result.
+ */
+export function iqTotals(tips: IqStep[], duels: IqStep[]): { total: number; peak: number } {
+  const rounds = [...new Set([...tips, ...duels].map((s) => s.gameweek_id))].sort((a, b) => a - b)
+  const sum = (steps: IqStep[], gw: number) => steps.filter((s) => s.gameweek_id === gw).reduce((n, s) => n + s.points, 0)
+  let total = 0, peak = 0
+  for (const gw of rounds) {
+    total += sum(tips, gw)
+    peak = Math.max(peak, total)
+    total += sum(duels, gw)
+    peak = Math.max(peak, total)
+  }
+  return { total, peak }
+}

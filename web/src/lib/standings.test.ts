@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { iqSummary, rankRows, totals } from './standings'
+import type { Duel } from './data'
+import { duelRecord, iqSummary, playerIq, rankRows, totals } from './standings'
 
 describe('rankRows', () => {
   it('gives equal points the same rank and skips the next', () => {
@@ -46,5 +47,27 @@ describe('iqSummary', () => {
   })
   it('has no last round before anything is scored', () => {
     expect(iqSummary([], [], 'me')).toEqual({ total: 0, lastRound: null, lastRoundIndividual: 0, lastRoundClub: 0 })
+  })
+})
+
+const duel = (gameweek_id: number, challenger_id: string, opponent_id: string, challenger_delta: number, opponent_delta: number, status: Duel['status'] = 'finished'): Duel =>
+  ({ id: gameweek_id, gameweek_id, challenger_id, opponent_id, stake: 10, status, challenger_iq: 0, opponent_iq: 0, challenger_delta, opponent_delta })
+
+describe('playerIq', () => {
+  it('adds finished duel results to tip IQ and keeps the peak', () => {
+    const tips = [{ user_id: 'me', nickname: 'me', gameweek_id: 1, points: 20 }]
+    const duels = [duel(1, 'me', 'x', -10, 10), duel(2, 'x', 'me', 0, 0, 'accepted')]
+    expect(playerIq(tips, [], duels, 'me')).toEqual({ total: 10, peak: 20 })
+  })
+})
+
+describe('duelRecord', () => {
+  it('counts wins, draws, losses, net IQ and the best win streak in round order', () => {
+    const duels = [
+      duel(1, 'me', 'a', 10, -10), duel(2, 'b', 'me', -5, 7), duel(3, 'me', 'c', -20, 20),
+      duel(4, 'me', 'a', 0, 0), duel(5, 'me', 'b', 5, -5), duel(6, 'me', 'c', 5, -5), duel(7, 'me', 'a', 5, -5),
+      duel(8, 'me', 'b', 0, 0, 'accepted'),
+    ]
+    expect(duelRecord(duels, 'me')).toEqual({ won: 5, drawn: 1, lost: 1, net: 12, bestStreak: 3 })
   })
 })

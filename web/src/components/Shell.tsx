@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { type Profile, useIqRows } from '@/lib/data'
-import { levelFor } from '@/lib/level'
-import { iqSummary } from '@/lib/standings'
+import { type Profile, useDuels, useIqRows } from '@/lib/data'
+import { levelFor } from '@shared/level.ts'
+import { playerIq } from '@/lib/standings'
 
 const NAV = [
   { to: '/', label: 'Kolo' },
@@ -12,7 +12,9 @@ const NAV = [
 
 export function Shell({ profile }: { profile: Profile }) {
   const iq = useIqRows()
-  const lv = iq.data && levelFor(iqSummary(iq.data.individual, iq.data.club, profile.id).total)
+  const duels = useDuels()
+  const lv = iq.data && duels.data && levelFor(playerIq(iq.data.individual, iq.data.club, duels.data, profile.id).peak)
+  const challenged = duels.data?.some((d) => d.status === 'pending' && d.opponent_id === profile.id)
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
       <div className="scarf h-3" aria-hidden />
@@ -37,6 +39,9 @@ export function Shell({ profile }: { profile: Profile }) {
                   `block py-3 text-center font-semibold focus-visible:outline-2 ${isActive ? 'border-t-4 border-[var(--club-secondary)]' : 'border-t-4 border-transparent opacity-70'}`}
               >
                 {n.label}
+                {n.to === '/' && challenged && (
+                  <span className="ml-1 inline-block size-2.5 rounded-full bg-[var(--club-secondary)] align-middle" aria-label="máš výzvu na duel" />
+                )}
               </NavLink>
             </li>
           ))}
