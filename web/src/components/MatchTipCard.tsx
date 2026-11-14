@@ -116,18 +116,26 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
         ) : state === 'postponed' ? (
           myTip && <p className="text-center text-sm">Tvoj tip {tipLabel(myTip)} ostáva platný do nového termínu.</p>
         ) : (
-          <ul className="divide-y divide-neutral-100 text-sm">
-            {[...(myTip ? [myTip] : []), ...others].map((t) => (
-              <li key={t.user_id} className="flex justify-between py-1.5">
-                <span className={t.user_id === userId ? 'font-semibold' : ''}>{profiles.get(t.user_id)?.nickname ?? '?'}</span>
-                <span>
-                  <span className="scoreboard mr-3">{tipLabel(t)}</span>
-                  {t.points != null && <span className="font-semibold">{t.points} IQ</span>}
-                </span>
+          <>
+            <ul className="divide-y divide-neutral-100 text-sm">
+              <li className="grid grid-cols-[1fr_4rem_3.5rem] pb-1 text-xs text-neutral-500" aria-hidden>
+                <span>Hráč</span><span className="text-center">Tip</span><span className="text-right">IQ</span>
               </li>
-            ))}
-            {!myTip && <li className="py-1.5 text-neutral-500">Tento zápas si netipoval.</li>}
-          </ul>
+              {[...(myTip ? [myTip] : []), ...others].map((t) => (
+                <li key={t.user_id} className="grid grid-cols-[1fr_4rem_3.5rem] items-center py-1.5">
+                  <span className={`truncate ${t.user_id === userId ? 'font-semibold' : ''}`}>{profiles.get(t.user_id)?.nickname ?? '?'}</span>
+                  <span className="scoreboard text-center">{tipLabel(t)}</span>
+                  <span className="text-right font-semibold">{t.points != null ? `${t.points > 0 ? '+' : ''}${t.points}` : '–'}</span>
+                </li>
+              ))}
+              {!myTip && <li className="py-1.5 text-neutral-500">Tento zápas si netipoval.</li>}
+            </ul>
+            <p className="mt-2 border-t border-neutral-100 pt-2 text-xs leading-relaxed text-neutral-500">
+              Tip: 1 = výhra {home.short_name}, X = remíza, 2 = výhra {away.short_name}, číslo ako 2:1 = presný výsledok.
+              IQ = body za tip: 2 za správneho víťaza alebo remízu, 5 za presný výsledok
+              {state === 'locked' ? '. Body pribudnú po skončení zápasu.' : '.'}
+            </p>
+          </>
         )}
       </div>
     </article>
