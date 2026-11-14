@@ -6,7 +6,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "sim:round": "bash scripts/sim-round.sh start",
+    "sim:reset": "bash scripts/sim-round.sh reset"
   },
   "keywords": [],
   "author": "",

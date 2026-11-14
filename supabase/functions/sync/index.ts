@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { fpl } from './fpl.ts'
+import { simulateRound } from './simulate.ts'
 import { runSync } from './sync.ts'
 
 Deno.serve(async (req) => {
@@ -11,7 +12,9 @@ Deno.serve(async (req) => {
     auth: { persistSession: false },
   })
   try {
-    return Response.json(await runSync(db, fpl))
+    // Local testing: a simulated round end (scripts/sim-round.sh). Never set in production.
+    const { data: sim } = await db.from('app_config').select('value').eq('key', 'sim_round').maybeSingle()
+    return Response.json(await runSync(db, sim ? simulateRound(fpl, Number(sim.value)) : fpl))
   } catch (e) {
     console.error(e)
     return Response.json({ error: String(e) }, { status: 500 })

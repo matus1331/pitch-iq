@@ -65,6 +65,28 @@ npx deno test --config supabase/functions/deno.json --allow-net --allow-env --al
 
 Deno testy potrebujú premenné `SUPABASE_URL` a `SUPABASE_SERVICE_ROLE_KEY` z `npx supabase status`. **Pozor:** testy synchronizácie zmažú z lokálnej databázy zápasy, tipy aj používateľov. Po nich spusti `npx supabase db reset` a znova synchronizáciu.
 
+Po zmene kódu Edge Function ju lokálny Supabase niekedy ďalej spúšťa v starej verzii. Pomôže reštart:
+
+```bash
+docker restart supabase_edge_runtime_pl-expert
+```
+
+### Simulácia konca kola
+
+Natipuj zápasy a potom nechaj kolo „odohrať“ s vymyslenými výsledkami a štatistikami hráčov. Vyhodnotia sa tipy, klubové tipy aj duely, rovnako ako po skutočnom kole:
+
+```bash
+npm run sim:round
+```
+
+Simuluje sa kolo, ktoré sa práve tipuje. Iné kolo zvolíš takto: `npm run sim:round -- 12`. Výsledky sú pri každom spustení rovnaké a simulácia platí aj pre automatickú synchronizáciu, kým ju nevrátiš:
+
+```bash
+npm run sim:reset
+```
+
+Vrátenie zmaže body zo simulovaného kola a vráti zápasy na skutočné dáta FPL. Tipy ostanú, duely kola sa vrátia do stavu „prijatý“. Výzvy, ktoré počas simulácie prepadli, ostanú prepadnuté. Simulácia funguje len lokálne. V produkcii sa nikdy nezapne, lebo nikto nenastaví `sim_round` v `app_config`.
+
 ## Nasadenie (všetko zadarmo)
 
 ### 1. Supabase
