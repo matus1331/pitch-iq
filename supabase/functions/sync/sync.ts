@@ -100,26 +100,27 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
     if (rows.length) must(await db.from('player_match_stats').upsert(rows))
   }
 
-  // 4. draw offers for upcoming matches of owned clubs
+  // 4. draw offers for upcoming matches of owned clubs: one six per round, shared by every club,
+  //    and different from the previous round's six.
   const owned = new Set<number>(
     must(await db.from('profiles').select('club_team_id').not('club_team_id', 'is', null)).map((p: Json) => p.club_team_id),
   )
   const existingOffers: Json[] = must(await db.from('club_tip_offers').select('fixture_id, team_id, tip_keys'))
   const hasOffer = new Set(existingOffers.map((o) => `${o.fixture_id}:${o.team_id}`))
-  const upcoming = fixtures
-    .filter((f) => f.kickoff_time && !f.started && f.gameweek_id != null && f.gameweek_id >= current && f.gameweek_id <= current + 1)
-    .sort((a, b) => a.kickoff_time!.localeCompare(b.kickoff_time!))
-  for (const f of upcoming) {
-    for (const [team, double] of [[f.team_h, f.is_double_gw_h], [f.team_a, f.is_double_gw_a]] as const) {
-      if (!owned.has(team) || hasOffer.has(`${f.id}:${team}`)) continue
-      const prev = existingOffers
-        .filter((o) => o.team_id === team && (byId.get(o.fixture_id)?.kickoff_time ?? '') < f.kickoff_time!)
-        .sort((a, b) => (byId.get(b.fixture_id)!.kickoff_time ?? '').localeCompare(byId.get(a.fixture_id)!.kickoff_time ?? ''))[0]
-      const offer = { fixture_id: f.id, team_id: team, tip_keys: drawOffer(prev?.tip_keys ?? [], double, Math.random) }
-      must(await db.from('club_tip_offers').insert(offer))
-      existingOffers.push(offer)
-      hasOffer.add(`${f.id}:${team}`)
-    }
+  const roundKeys = new Map<number, string[]>()
+  for (const o of existingOffers) {
+    const gw = byId.get(o.fixture_id)?.gameweek_id
+    if (gw != null && !roundKeys.has(gw)) roundKeys.set(gw, o.tip_keys)
+  }
+  for (const gw of [current, current + 1]) {
+    const roundFixtures = fixtures.filter((f) => f.gameweek_id === gw && f.kickoff_time && !f.started)
+    const missing = roundFixtures.flatMap((f) => [f.team_h, f.team_a].filter((t) => owned.has(t) && !hasOffer.has(`${f.id}:${t}`)).map((t) => [f.id, t] as const))
+    if (!missing.length) continue
+    // Double-gameweek-safe keys for the whole round as soon as any club plays twice in it.
+    const double = fixtures.some((f) => f.gameweek_id === gw && (f.is_double_gw_h || f.is_double_gw_a))
+    if (!roundKeys.has(gw)) roundKeys.set(gw, drawOffer(roundKeys.get(gw - 1) ?? [], double, Math.random))
+    must(await db.from('club_tip_offers').insert(missing.map(([fixture_id, team_id]) => ({ fixture_id, team_id, tip_keys: roundKeys.get(gw)! }))))
+    for (const [f, t] of missing) hasOffer.add(`${f}:${t}`)
   }
 
   // 5. postponed: void club tips, unscore match tips

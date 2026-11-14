@@ -16,7 +16,7 @@ Hra musí byť **úplne zadarmo** (žiadne platené API ani hosting). Body sa po
 - Tipovanie kola z mobilu, jednoduché prihlásenie.
 - Automatické vyhodnotenie a pripísanie bodov po zápasoch.
 - Dve tabuľky: individuálna a klubová.
-- Klubová časť je zaujímavá vďaka rotácii tipov (každý zápas iná šestica).
+- Klubová časť je zaujímavá vďaka rotácii tipov (každé kolo iná šestica, rovnaká pre všetkých hráčov).
 
 ## Ne-ciele
 
@@ -81,10 +81,10 @@ Používateľ zvolil A.
 
 ### Rotácia tipov
 - Pre každý zápas klubu sa raz vylosuje **6 tipov** z katalógu: **3 hráčske + 3 tímové**. Šestica sa uloží a nemení sa.
-- Ak sa dá, nevyberajú sa tipy zo šestice predchádzajúceho zápasu toho klubu.
+- Šestica sa losuje raz na kolo a dostanú ju všetky kluby (zmena 14. 11.: predtým každý klub zvlášť). Ak sa dá, nevyberajú sa tipy zo šestice predchádzajúceho kola. Ak v kole hrá niektorý klub dvakrát, celé kolo dostane šesticu bez tipov nevhodných pre dvojkolo.
 - Hráč si z 6 vyberie **3** a vyplní ich. Tipy sa zamykajú pri výkope.
 - Hráčske tipy: hráč vyberá z aktuálneho kádra svojho klubu (FPL `elements`, filtrované podľa `team`).
-- Ak klub v kole nehrá → žiadne klubové tipy. Dvojkolo (dva zápasy) → dve samostatné šestice.
+- Ak klub v kole nehrá → žiadne klubové tipy. Dvojkolo (dva zápasy) → rovnaká šestica, ale tri tipy sa vyberajú pre každý zápas zvlášť.
 - Odložený zápas (zmení sa kolo / `kickoff_time` je null) → tipy sa zrušia, body 0.
 
 ### Katalóg tipov (body orientačné, ľahko nastaviteľné v kóde)

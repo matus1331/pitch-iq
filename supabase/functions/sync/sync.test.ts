@@ -174,3 +174,22 @@ Deno.test('scores correctly when other matches hold more than 1000 stat rows', a
   const brace = (await points('club_tips', 1001)).find((r) => r.tip_key === 'player_brace')!
   assertEquals(brace.points, 6)
 })
+
+Deno.test('everyone gets the same six tips in a round, and a different six next round', async () => {
+  await reset()
+  for (const [email, nickname, club] of [['beta@test.local', 'beta', ARS], ['gama@test.local', 'gama', 2]] as const) {
+    const { data } = await db.auth.admin.createUser({ email, password: 'heslo12345', email_confirm: true })
+    await ok(db.from('profiles').insert({ id: data.user!.id, nickname, club_team_id: club }))
+  }
+  const up = (id: number, event: number, team_h: number, team_a: number) =>
+    fixture(id, { event, team_h, team_a, kickoff_time: future, started: false, finished_provisional: false, finished: false, team_h_score: null, team_a_score: null })
+  await runSync(db, api([up(1001, GW, EVE, ARS), up(1002, GW, 2, 3), up(1003, GW + 1, ARS, EVE), up(1004, GW + 1, 3, 2)]))
+  const { data } = await db.from('club_tip_offers').select('fixture_id, tip_keys')
+  const keysOf = (ids: number[]) => new Set(data!.filter((o) => ids.includes(o.fixture_id)).map((o) => [...o.tip_keys].sort().join(',')))
+  const thisRound = keysOf([1001, 1002]), nextRound = keysOf([1003, 1004])
+  assertEquals(data!.length, 6) // EVE, ARS, AVL in each round
+  assertEquals(thisRound.size, 1)
+  assertEquals(nextRound.size, 1)
+  const [a] = thisRound, [b] = nextRound
+  assertEquals(a.split(',').filter((k) => b.split(',').includes(k)), [])
+})

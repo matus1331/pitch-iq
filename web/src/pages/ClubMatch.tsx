@@ -57,7 +57,7 @@ export function ClubMatch({ profile }: { profile: Profile }) {
     <section className="space-y-8">
       <div>
         <h1 className="font-heading text-4xl leading-none">Môj klub</h1>
-        <p className="opacity-85">Z každej šestice tipov si vyber tri. Pri každom zápase dostaneš inú šesticu.</p>
+        <p className="opacity-85">Šestica tipov sa losuje na každé kolo a je rovnaká pre všetkých hráčov. Vyber si z nej tri. V ďalšom kole dostaneš novú šesticu.</p>
       </div>
       {error && <p role="alert" className="rounded-lg bg-white p-3 text-red-700">{error}</p>}
       {fixtures.length === 0 && <p>Tvoj klub v tomto ani nasledujúcom kole nehrá.</p>}
