@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { badgeUrl } from '@/lib/clubColors'
+import { badgeUrl, CLUB_COLORS } from '@/lib/clubColors'
 import { useProfiles, useTeams } from '@/lib/data'
 import { errorText, supabase } from '@/lib/supabase'
 
@@ -39,6 +39,7 @@ export function ChooseClub() {
         {teams.data?.list.map((t) => {
           const owner = ownerOf.get(t.id)
           const selected = picked === t.id
+          const colors = CLUB_COLORS[t.short_name]
           return (
             <li key={t.id}>
               <button
@@ -46,11 +47,12 @@ export function ChooseClub() {
                 onClick={() => setPicked(t.id)}
                 aria-pressed={selected}
                 aria-label={owner ? `${t.name}, obsadený hráčom ${owner}` : t.name}
-                className={`flex w-full flex-col items-center gap-1 rounded-lg bg-white p-2 text-neutral-900 focus-visible:outline-3 focus-visible:outline-offset-2 disabled:opacity-40 ${selected ? 'ring-4 ring-[var(--club-secondary)]' : ''}`}
+                style={selected && colors ? { background: colors.primary, color: colors.text } : undefined}
+                className={`flex w-full flex-col items-center gap-1 rounded-lg bg-white p-2 text-neutral-900 transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 disabled:opacity-40 ${selected ? 'ring-4 ring-[var(--club-secondary)]' : ''}`}
               >
-                <img src={badgeUrl(t.code)} alt="" className="size-10" loading="lazy" />
+                <img src={badgeUrl(t.code)} alt="" className="size-11 rounded-full bg-white p-0.5" loading="lazy" />
                 <span className="text-xs font-semibold">{t.short_name}</span>
-                <span className="h-4 truncate text-[11px] text-neutral-500">{owner ?? ''}</span>
+                <span className="h-4 truncate text-[11px] opacity-60">{owner ?? ''}</span>
               </button>
             </li>
           )

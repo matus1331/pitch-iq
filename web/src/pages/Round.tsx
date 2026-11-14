@@ -45,7 +45,7 @@ export function Round() {
     .reduce((s, t) => s + (t.points ?? 0), 0)
   const card = (f: Fixture) => (
     <MatchTipCard
-      key={`${f.id}-${tips.dataUpdatedAt}`}
+      key={f.id}
       fixture={f}
       home={teams.data.byId.get(f.team_h)!}
       away={teams.data.byId.get(f.team_a)!}

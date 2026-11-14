@@ -36,7 +36,7 @@ export const CLUB_COLORS: Record<string, ClubColors> = {
 export const NEUTRAL_COLORS: ClubColors = { primary: '#14532d', secondary: '#f3f5f4', text: '#ffffff' }
 
 export const badgeUrl = (code: number) =>
-  `https://resources.premierleague.com/premierleague/badges/t${code}.png`
+  `https://resources.premierleague.com/premierleague/badges/100/t${code}.png` // the unsized set has white-only variants (e.g. Liverpool)
 
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => {

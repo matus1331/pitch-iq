@@ -23,6 +23,6 @@ describe('contrastRatio', () => {
 
 describe('badgeUrl', () => {
   it('uses the team code', () => {
-    expect(badgeUrl(11)).toBe('https://resources.premierleague.com/premierleague/badges/t11.png')
+    expect(badgeUrl(11)).toBe('https://resources.premierleague.com/premierleague/badges/100/t11.png')
   })
 })
