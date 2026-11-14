@@ -7,6 +7,7 @@ export const supabase = createClient(
 
 const MESSAGES: Record<string, string> = {
   INVALID_INVITE: 'Nesprávny pozývací kód.',
+  profiles_id_fkey: 'Tvoje prihlásenie už neplatí. Odhlás sa a prihlás sa znova.',
   NICKNAME_TAKEN: 'Prezývka je obsadená.',
   NICKNAME_INVALID: 'Prezývka musí mať 2 až 20 znakov.',
   PROFILE_EXISTS: 'Profil už máš vytvorený.',

@@ -24,7 +24,14 @@ export function useSession(): Session | null | undefined {
   const qc = useQueryClient()
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    supabase.auth.getSession().then(async ({ data }) => {
+      // A stored session can outlive its account (e.g. the user was deleted); ask the server and drop it if so.
+      if (data.session && (await supabase.auth.getUser()).error) {
+        await supabase.auth.signOut({ scope: 'local' })
+        return setSession(null)
+      }
+      setSession(data.session)
+    })
     const { data } = supabase.auth.onAuthStateChange((e, s) => {
       setSession(s)
       // RLS makes every query depend on who is signed in.
