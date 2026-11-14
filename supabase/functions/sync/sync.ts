@@ -200,9 +200,10 @@ async function settleDuels(db: SupabaseClient, fixtures: FixtureRow[]) {
   if (!due.length) return
 
   const users = [...new Set(due.flatMap((d) => [d.challenger_id, d.opponent_id]))]
+  const tag = (category: string) => (rows: Json[]) => rows.map((r) => ({ ...r, category }))
   const tips: Json[] = [
-    ...must(await db.from('leaderboard_individual').select('user_id, gameweek_id, points').in('user_id', users)),
-    ...must(await db.from('leaderboard_club').select('user_id, gameweek_id, points').in('user_id', users)),
+    ...tag('individual')(must(await db.from('leaderboard_individual').select('user_id, gameweek_id, points').in('user_id', users))),
+    ...tag('club')(must(await db.from('leaderboard_club').select('user_id, gameweek_id, points').in('user_id', users))),
   ]
   const settled: Json[] = must(await db.from('duels').select('*').eq('status', 'finished'))
   const steps = (user: string, before: number) => iqTotals(
@@ -210,11 +211,12 @@ async function settleDuels(db: SupabaseClient, fixtures: FixtureRow[]) {
     settled.filter((d) => d.gameweek_id < before && (d.challenger_id === user || d.opponent_id === user))
       .map((d) => ({ gameweek_id: d.gameweek_id, points: d.challenger_id === user ? d.challenger_delta : d.opponent_delta })),
   )
-  const roundIq = (user: string, gw: number) =>
-    tips.filter((t) => t.user_id === user && t.gameweek_id === gw).reduce((n, t) => n + t.points, 0)
+  // A duel compares only the IQ of its own category (result tips or club tips) in its round.
+  const roundIq = (user: string, gw: number, category: string) =>
+    tips.filter((t) => t.user_id === user && t.gameweek_id === gw && t.category === category).reduce((n, t) => n + t.points, 0)
 
   for (const d of due) {
-    const c = roundIq(d.challenger_id, d.gameweek_id), o = roundIq(d.opponent_id, d.gameweek_id)
+    const c = roundIq(d.challenger_id, d.gameweek_id, d.category), o = roundIq(d.opponent_id, d.gameweek_id, d.category)
     const levelBefore = (u: string) => levelFor(steps(u, d.gameweek_id).peak).level
     // The winner takes the stake; an underdog winner (lower level before the round) gets half again on top.
     const win = (winner: string, loser: string) => d.stake + (levelBefore(winner) < levelBefore(loser) ? Math.floor(d.stake / 2) : 0)

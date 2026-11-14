@@ -79,8 +79,12 @@ export const useIqRows = () =>
     },
   })
 
+/** What a duel compares: result tips ('individual') or club tips ('club'). */
+export type DuelCategory = 'individual' | 'club'
+
 export interface Duel {
   id: number
+  category: DuelCategory
   gameweek_id: number
   challenger_id: string
   opponent_id: string

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Duel } from './data'
-import { duelRecord, iqSummary, playerIq, rankRows, totals } from './standings'
+import { categoryIq, duelRecord, iqSummary, playerIq, rankRows, totals } from './standings'
 
 describe('rankRows', () => {
   it('gives equal points the same rank and skips the next', () => {
@@ -51,7 +51,7 @@ describe('iqSummary', () => {
 })
 
 const duel = (gameweek_id: number, challenger_id: string, opponent_id: string, challenger_delta: number, opponent_delta: number, status: Duel['status'] = 'finished'): Duel =>
-  ({ id: gameweek_id, gameweek_id, challenger_id, opponent_id, stake: 10, status, challenger_iq: 0, opponent_iq: 0, challenger_delta, opponent_delta })
+  ({ id: gameweek_id, category: 'individual', gameweek_id, challenger_id, opponent_id, stake: 10, status, challenger_iq: 0, opponent_iq: 0, challenger_delta, opponent_delta })
 
 describe('playerIq', () => {
   it('adds finished duel results to tip IQ and keeps the peak', () => {
@@ -69,5 +69,21 @@ describe('duelRecord', () => {
       duel(8, 'me', 'b', 0, 0, 'accepted'),
     ]
     expect(duelRecord(duels, 'me')).toEqual({ won: 5, drawn: 1, lost: 1, net: 12, bestStreak: 3 })
+  })
+})
+
+describe('categoryIq', () => {
+  it('counts only the category: its tips, its duel results and the stakes tied up in it', () => {
+    const tips = [{ user_id: 'me', nickname: 'me', gameweek_id: 1, points: 22 }, { user_id: 'x', nickname: 'x', gameweek_id: 1, points: 9 }]
+    const duels: Duel[] = [
+      duel(1, 'me', 'x', 5, -5),
+      { ...duel(2, 'x', 'me', 0, 0), category: 'club' },
+      duel(3, 'x', 'me', 0, 0, 'accepted'),
+      duel(4, 'me', 'y', 0, 0, 'pending'),
+      duel(5, 'z', 'me', 0, 0, 'pending'), // incoming challenge ties up nothing
+      { ...duel(6, 'me', 'z', 0, 0, 'accepted'), category: 'club' },
+    ]
+    expect(categoryIq(tips, duels, 'me', 'individual')).toEqual({ iq: 27, locked: 20, free: 7 })
+    expect(categoryIq([], duels, 'me', 'club')).toEqual({ iq: 0, locked: 10, free: -10 })
   })
 })

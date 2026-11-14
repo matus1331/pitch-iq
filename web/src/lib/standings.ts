@@ -1,5 +1,5 @@
 import { iqTotals } from '@shared/level.ts'
-import type { Duel } from './data'
+import type { Duel, DuelCategory } from './data'
 export interface Row { user_id: string; nickname: string; points: number }
 export interface RoundRow extends Row { gameweek_id: number }
 
@@ -55,4 +55,21 @@ export function duelRecord(duels: Duel[], userId: string) {
     if (delta > 0) { won++; bestStreak = Math.max(bestStreak, ++streak) } else { streak = 0; if (delta < 0) lost++; else drawn++ }
   }
   return { won, drawn, lost, net, bestStreak }
+}
+
+export const DUEL_CATEGORIES: { id: DuelCategory; label: string }[] = [
+  { id: 'individual', label: 'Výsledky' },
+  { id: 'club', label: 'Klub' },
+]
+
+/** IQ a player can bet in one category: its tips plus finished duels in it, minus what open duels tie up. */
+export function categoryIq(tips: RoundRow[], duels: Duel[], userId: string, category: DuelCategory) {
+  const iq = tips.filter((r) => r.user_id === userId).reduce((n, r) => n + r.points, 0)
+    + myFinished(duels, userId).filter((d) => d.category === category).reduce((n, d) => n + mineDelta(d, userId), 0)
+  // Same rule as the server: accepted duels and own outgoing challenges tie up IQ, incoming ones do not.
+  const locked = duels.filter((d) => d.category === category
+    && ((d.status === 'accepted' && (d.challenger_id === userId || d.opponent_id === userId))
+      || (d.status === 'pending' && d.challenger_id === userId)))
+    .reduce((n, d) => n + d.stake, 0)
+  return { iq, locked, free: iq - locked }
 }

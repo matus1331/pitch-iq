@@ -222,6 +222,18 @@ Deno.test('finished round settles accepted duels, underdog winner gets a bonus',
   assertEquals((await db.from('duels').select('opponent_delta').single()).data!.opponent_delta, 15) // settled once
 })
 
+Deno.test('a club duel ignores result tips', async () => {
+  const { alfa } = await reset()
+  const beta = await addUser('beta', ARS)
+  await ok(db.from('gameweeks').upsert({ id: GW }))
+  await runSync(db, api([fixture(1001)]))
+  await ok(db.from('match_tips').insert({ user_id: alfa, fixture_id: 1001, kind: 'exact', home_goals: 2, away_goals: 1, points: 5 }))
+  await ok(db.from('duels').insert({ gameweek_id: GW, challenger_id: alfa, opponent_id: beta, stake: 5, status: 'accepted', category: 'club' }))
+  await runSync(db, api([fixture(1001)]))
+  const { data } = await db.from('duels').select('challenger_iq, opponent_iq, challenger_delta').single()
+  assertEquals([data!.challenger_iq, data!.opponent_iq, data!.challenger_delta], [0, 0, 0])
+})
+
 Deno.test('a draw moves no IQ, an unfinished round waits', async () => {
   const { alfa } = await reset()
   const beta = await addUser('beta', ARS)

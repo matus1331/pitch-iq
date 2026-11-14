@@ -4,7 +4,7 @@ Bezplatná tipovačka Premier League pre partiu kamošov. Hráči zbierajú IQ b
 
 - **tipovanie výsledkov**: za správneho víťaza 2 IQ, za presný výsledok 5 IQ,
 - **klubová súťaž**: pri každom zápase svojho klubu vyberieš 3 tipy zo šestice, ktorá sa losuje raz na kolo pre všetkých,
-- **duely**: vyzveš kamoša o 5, 10 alebo 20 IQ; kto naberie v kole viac IQ, berie stávku.
+- **duely**: vyzveš kamoša o 5, 10 alebo 20 IQ vo Výsledkoch alebo v Klube; kto naberie v kole v tej kategórii viac IQ, berie stávku.
 
 Dáta sa berú z oficiálneho FPL API zadarmo. IQ body aj duely sa vyhodnocujú automaticky každých 10 minút.
 
