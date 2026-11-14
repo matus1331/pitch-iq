@@ -150,3 +150,27 @@ Deno.test('provisional vs final', async () => {
   await runSync(db, api([fixture(1001)]))
   assertEquals((await points('match_tips', 1001))[0].is_final, true)
 })
+
+Deno.test('match moved straight to another round voids club tips', async () => {
+  const { alfa } = await reset()
+  const later = new Date(Date.now() + 40 * 86400e3).toISOString()
+  await runSync(db, api([fixture(1001, { kickoff_time: future, started: false, finished_provisional: false, finished: false })]))
+  await seedUserWithTips(alfa, 1001)
+  await runSync(db, api([fixture(1001, { event: 25, kickoff_time: later, started: false, finished_provisional: false, finished: false, team_h_score: null, team_a_score: null })]))
+  const { data: offer } = await db.from('club_tip_offers').select('voided').eq('fixture_id', 1001).single()
+  assertEquals(offer!.voided, true)
+  assertEquals((await points('club_tips', 1001)).map((r) => r.points), [0, 0])
+})
+
+Deno.test('scores correctly when other matches hold more than 1000 stat rows', async () => {
+  const { alfa } = await reset()
+  const upcoming = (id: number, event: number) =>
+    fixture(id, { event, kickoff_time: future, started: false, finished_provisional: false, finished: false })
+  await runSync(db, api([upcoming(1002, GW - 1), upcoming(1001, GW)]))
+  const filler = Array.from({ length: 1100 }, (_, i) => ({ player_id: 50000 + i, fixture_id: 1002, team_id: ARS, stats: {} }))
+  await ok(db.from('player_match_stats').insert(filler))
+  await seedUserWithTips(alfa, 1001)
+  await runSync(db, api([fixture(1002, { event: GW - 1 }), fixture(1001)]))
+  const brace = (await points('club_tips', 1001)).find((r) => r.tip_key === 'player_brace')!
+  assertEquals(brace.points, 6)
+})

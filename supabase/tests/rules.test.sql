@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(14);
 
 -- seed (as postgres, bypasses RLS)
 insert into auth.users (id, email) values
@@ -10,12 +10,14 @@ insert into gameweeks (id, deadline_time, is_current, is_next, finished) values 
 insert into fixtures (id, gameweek_id, kickoff_time, team_h, team_a) values
   (9100, 9013, now() + interval '1 day', 9011, 9001),   -- open
   (9101, 9013, now() - interval '1 minute', 9011, 9001), -- locked
-  (9102, null, null, 9011, 9001);                      -- postponed
+  (9102, null, null, 9011, 9001),                      -- postponed
+  (9103, 9013, now() + interval '2 days', 9001, 9011); -- second open match
 insert into profiles (id, nickname, club_team_id) values
   ('00000000-0000-0000-0000-00000000000a', 'pgtap_alfa', 9011),
   ('00000000-0000-0000-0000-00000000000b', 'pgtap_beta', null);
 insert into club_tip_offers (fixture_id, team_id, tip_keys) values
-  (9100, 9011, array['player_goal','player_assist','player_yellow','team_red','team_clean_sheet','match_own_goal']);
+  (9100, 9011, array['player_goal','player_assist','player_yellow','team_red','team_clean_sheet','match_own_goal']),
+  (9103, 9011, array['player_goal','player_assist','player_yellow','team_red','team_clean_sheet','match_own_goal']);
 
 -- rows that exist before kickoff passed (inserted as postgres)
 insert into match_tips (user_id, fixture_id, kind, outcome) values
@@ -51,6 +53,15 @@ select throws_ok(
 select throws_ok(
   $$update club_tips set tip_key = 'team_xg_over' where tip_key = 'team_red'$$,
   'CLUB_TIP_NOT_OFFERED', 'club_tip_not_in_offer_rejected');
+select throws_ok(
+  $$update club_tips set fixture_id = 9103, tip_key = 'team_clean_sheet' where tip_key = 'team_red'$$,
+  'TIP_FIXTURE_IMMUTABLE', 'club_tip_cannot_move_to_other_match');
+select throws_ok(
+  $$update match_tips set fixture_id = 9103 where fixture_id = 9100$$,
+  'TIP_FIXTURE_IMMUTABLE', 'match_tip_cannot_move_to_other_match');
+select throws_ok(
+  $$update match_tips set kind = 'exact', outcome = null, home_goals = 1, away_goals = 0 where fixture_id = 9101$$,
+  'TIP_LOCKED', 'locked_tip_cannot_be_edited');
 
 -- act as B (no club) – sees nothing of A for the open match
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}';

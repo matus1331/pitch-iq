@@ -1,6 +1,6 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { drawOffer } from '../_shared/rotation.ts'
-import { type MatchContext, type PlayerStats, scoreClubTip, scoreMatchTip } from '../_shared/scoring.ts'
+import { type PlayerStats, scoreClubTip, scoreMatchTip } from '../_shared/scoring.ts'
 
 // deno-lint-ignore no-explicit-any
 type Json = any
@@ -70,6 +70,13 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
     finished_provisional: !!f.finished_provisional, finished: !!f.finished,
     is_double_gw_h: isDouble(f.event, f.team_h), is_double_gw_a: isDouble(f.event, f.team_a),
   }))
+  // A match that FPL moved to a different round counts as postponed (spec: tips are cancelled).
+  const before = new Map<number, number | null>(
+    must(await db.from('fixtures').select('id, gameweek_id')).map((f: Json) => [f.id, f.gameweek_id]),
+  )
+  const moved = fixtures
+    .filter((f) => before.has(f.id) && before.get(f.id) != null && f.gameweek_id != null && before.get(f.id) !== f.gameweek_id)
+    .map((f) => f.id)
   must(await db.from('fixtures').upsert(fixtures))
 
   // 3. player stats for started fixtures of recent rounds
@@ -118,52 +125,58 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
   // 5. postponed: void club tips, unscore match tips
   const postponed = fixtures.filter((f) => f.kickoff_time == null || f.gameweek_id == null).map((f) => f.id)
   if (postponed.length) {
-    must(await db.from('club_tip_offers').update({ voided: true }).in('fixture_id', postponed))
-    must(await db.from('club_tips').update({ points: 0, is_final: true }).in('fixture_id', postponed))
     must(await db.from('match_tips').update({ points: null, is_final: false }).in('fixture_id', postponed))
   }
+  const voidIds = [...postponed, ...moved]
+  if (voidIds.length) {
+    must(await db.from('club_tip_offers').update({ voided: true }).in('fixture_id', voidIds))
+    must(await db.from('club_tips').update({ points: 0, is_final: true }).in('fixture_id', voidIds))
+  }
 
-  // 6. score finished matches from scratch (idempotent)
+  // 6. score finished matches of the recent rounds from scratch (idempotent).
+  // One fixture at a time keeps every query far below PostgREST's 1000-row cap.
+  // ponytail: FPL corrections older than the previous round are not picked up; widen the window if that matters.
   let scored = 0
-  const done = fixtures.filter((f) => f.finished_provisional && f.gameweek_id != null && f.kickoff_time != null
+  const done = fixtures.filter((f) => f.finished_provisional && f.kickoff_time != null
+    && f.gameweek_id != null && f.gameweek_id >= current - 1 && f.gameweek_id <= current
     && f.team_h_score != null && f.team_a_score != null)
   if (!done.length) return { fixtures: fixtures.length, scored }
-  const doneIds = done.map((f) => f.id)
-  const matchTips: Json[] = must(await db.from('match_tips').select('*').in('fixture_id', doneIds))
-  const clubTips: Json[] = must(await db.from('club_tips').select('*').in('fixture_id', doneIds))
-  const voided = new Set(
-    must(await db.from('club_tip_offers').select('fixture_id, team_id').eq('voided', true).in('fixture_id', doneIds))
-      .map((o: Json) => `${o.fixture_id}:${o.team_id}`),
-  )
   const clubOf = new Map<string, number>(
     must(await db.from('profiles').select('id, club_team_id')).map((p: Json) => [p.id, p.club_team_id]),
   )
-  const statsRows: Json[] = must(await db.from('player_match_stats').select('player_id, fixture_id, team_id, stats').in('fixture_id', doneIds))
 
-  for (const t of matchTips) {
-    const f = byId.get(t.fixture_id)!
-    must(await db.from('match_tips').update({ points: scoreMatchTip(t, f.team_h_score!, f.team_a_score!), is_final: f.finished })
-      .eq('user_id', t.user_id).eq('fixture_id', t.fixture_id))
-    scored++
-  }
-  for (const t of clubTips) {
-    const f = byId.get(t.fixture_id)!
-    const club = clubOf.get(t.user_id)
-    let pts = 0
-    if (club != null && (club === f.team_h || club === f.team_a) && !voided.has(`${f.id}:${club}`)) {
-      const home = club === f.team_h
-      const ctx: MatchContext = {
-        clubId: club,
-        opponentId: home ? f.team_a : f.team_h,
-        clubGoals: home ? f.team_h_score! : f.team_a_score!,
-        opponentGoals: home ? f.team_a_score! : f.team_h_score!,
-        players: new Map(statsRows.filter((s) => s.fixture_id === f.id).map((s) => [s.player_id, { teamId: s.team_id, stats: s.stats }])),
-      }
-      pts = scoreClubTip(t, ctx)
+  for (const f of done) {
+    const matchTips: Json[] = must(await db.from('match_tips').select('*').eq('fixture_id', f.id))
+    if (matchTips.length) {
+      must(await db.from('match_tips').upsert(matchTips.map((t) => ({
+        ...t, points: scoreMatchTip(t, f.team_h_score!, f.team_a_score!), is_final: f.finished,
+      }))))
+      scored += matchTips.length
     }
-    must(await db.from('club_tips').update({ points: pts, is_final: f.finished })
-      .eq('user_id', t.user_id).eq('fixture_id', t.fixture_id).eq('tip_key', t.tip_key))
-    scored++
+
+    const clubTips: Json[] = must(await db.from('club_tips').select('*').eq('fixture_id', f.id))
+    if (!clubTips.length) continue
+    const voided = new Set<number>(
+      must(await db.from('club_tip_offers').select('team_id').eq('fixture_id', f.id).eq('voided', true)).map((o: Json) => o.team_id),
+    )
+    const statsRows: Json[] = must(await db.from('player_match_stats').select('player_id, team_id, stats').eq('fixture_id', f.id))
+    const players = new Map(statsRows.map((s) => [s.player_id, { teamId: s.team_id, stats: s.stats }]))
+    must(await db.from('club_tips').upsert(clubTips.map((t) => {
+      const club = clubOf.get(t.user_id)
+      let pts = 0
+      if (club != null && (club === f.team_h || club === f.team_a) && !voided.has(club)) {
+        const home = club === f.team_h
+        pts = scoreClubTip(t, {
+          clubId: club,
+          opponentId: home ? f.team_a : f.team_h,
+          clubGoals: home ? f.team_h_score! : f.team_a_score!,
+          opponentGoals: home ? f.team_a_score! : f.team_h_score!,
+          players,
+        })
+      }
+      return { ...t, points: pts, is_final: f.finished }
+    })))
+    scored += clubTips.length
   }
   return { fixtures: fixtures.length, scored }
 }
