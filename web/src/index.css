@@ -160,6 +160,33 @@
   }
 }
 
+/* Tab changes (Shell.tsx starts a view transition): the page slides towards the tapped tab and the
+   bar under the active tab glides across. Browsers without view transitions just switch. */
+.page { view-transition-name: page; }
+.nav-indicator { view-transition-name: nav-indicator; }
+nav { view-transition-name: nav; }
+
+::view-transition-old(page) { animation: page-out 140ms ease-in both; }
+::view-transition-new(page) { animation: page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+::view-transition-group(nav-indicator) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+/* The tab bar itself stays put: no cross-fade of its translucent background. */
+::view-transition-old(nav) { display: none; }
+::view-transition-new(nav) { animation: none; }
+
+@keyframes page-out { to { opacity: 0; transform: translateX(-16px); } }
+@keyframes page-in { from { opacity: 0; transform: translateX(28px); } }
+html[data-nav='back']::view-transition-old(page) { animation-name: page-out-back; }
+html[data-nav='back']::view-transition-new(page) { animation-name: page-in-back; }
+@keyframes page-out-back { to { opacity: 0; transform: translateX(16px); } }
+@keyframes page-in-back { from { opacity: 0; transform: translateX(-28px); } }
+
+/* Content that swaps inside a page (a board in Tabuľky): a short rise instead of a hard cut. */
+.swap-in { animation: swap-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes swap-in { from { opacity: 0; transform: translateY(6px); } }
+
 @media (prefers-reduced-motion: reduce) {
   body { transition: none; }
+  .swap-in { animation: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

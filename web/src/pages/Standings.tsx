@@ -37,10 +37,13 @@ export function Standings() {
   return (
     <section>
       <h1 className="font-heading mb-3 text-4xl leading-none">Tabuľky</h1>
-      <div className="mb-3 grid grid-cols-3 rounded-lg bg-black/20 p-1">
+      <div className="relative mb-3 grid grid-cols-3 rounded-lg bg-black/20 p-1">
+        {/* The white pill slides under the chosen board. */}
+        <span aria-hidden className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-md bg-white transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: `translateX(${BOARDS.findIndex((b) => b.id === board) * 100}%)` }} />
         {BOARDS.map((b) => (
           <button key={b.id} aria-pressed={board === b.id} onClick={() => { setBoard(b.id); setGw(null) }}
-            className={`rounded-md py-2 font-semibold ${board === b.id ? 'bg-white text-neutral-900' : ''}`}>
+            className={`relative rounded-md py-2 font-semibold transition-colors duration-300 ${board === b.id ? 'text-neutral-900' : ''}`}>
             {b.label}
           </button>
         ))}
@@ -59,7 +62,7 @@ export function Standings() {
         </p>
       )}
       {board === 'duels' && standing && session && (
-        <div className="mb-4 rounded-xl bg-white p-4 text-neutral-900 shadow-md">
+        <div className="swap-in mb-4 rounded-xl bg-white p-4 text-neutral-900 shadow-md">
           <h2 className="font-semibold">Tvoje IQ na duely</h2>
           <table className="mt-2 w-full text-sm">
             <thead className="text-xs text-neutral-500">
@@ -87,7 +90,7 @@ export function Standings() {
         </div>
       )}
 
-      <ol className="overflow-hidden rounded-xl bg-white text-neutral-900 shadow-md">
+      <ol key={`${board}-${gw}`} className="swap-in overflow-hidden rounded-xl bg-white text-neutral-900 shadow-md">
         {ranked.map((r) => {
           const team = teams.data?.byId.get(clubOf.get(r.user_id) ?? -1)
           const me = r.user_id === session?.user.id

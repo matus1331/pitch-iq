@@ -6,6 +6,10 @@ export const supabase = createClient(
 )
 
 const MESSAGES: Record<string, string> = {
+  'Invalid login credentials': 'Nesprávny e-mail alebo heslo.',
+  'User already registered': 'Účet s týmto e-mailom už existuje. Prihlás sa.',
+  'Password should be at least': 'Heslo je príliš krátke.',
+  'Failed to fetch': 'Nepodarilo sa spojiť so serverom. Skontroluj pripojenie.',
   INVALID_INVITE: 'Nesprávny pozývací kód.',
   profiles_id_fkey: 'Tvoje prihlásenie už neplatí. Odhlás sa a prihlás sa znova.',
   NICKNAME_TAKEN: 'Prezývka je obsadená.',
@@ -36,7 +40,10 @@ const MESSAGES: Record<string, string> = {
 export function errorText(e: unknown): string {
   const msg = (e as { message?: string })?.message ?? String(e)
   const code = Object.keys(MESSAGES).find((k) => msg.includes(k))
-  return code ? MESSAGES[code] : msg
+  if (code) return MESSAGES[code]
+  // Unknown errors can carry database details; keep those in the console, not on screen.
+  console.error(e)
+  return 'Niečo sa pokazilo. Skús to znova.'
 }
 
 /** Throw on Supabase error, return data. */

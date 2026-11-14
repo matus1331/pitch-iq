@@ -76,16 +76,18 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
       <div className="p-4">
         {state === 'open' ? (
           <>
-            <div role="tablist" className="mb-3 grid grid-cols-2 rounded-lg bg-neutral-100 p-1 text-sm">
+            <div role="tablist" className="relative mb-3 grid grid-cols-2 rounded-lg bg-neutral-100 p-1 text-sm">
+              <span aria-hidden className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/2)] rounded-md bg-white shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none"
+                style={{ transform: `translateX(${mode === '1x2' ? 0 : 100}%)` }} />
               {(['1x2', 'exact'] as const).map((m) => (
                 <button key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
-                  className={`rounded-md py-1.5 font-semibold ${mode === m ? 'bg-white shadow-sm' : 'text-neutral-500'}`}>
+                  className={`relative rounded-md py-1.5 font-semibold transition-colors duration-300 ${mode === m ? '' : 'text-neutral-500'}`}>
                   {m === '1x2' ? 'Víťaz · 2 IQ' : 'Presný výsledok · 5 IQ'}
                 </button>
               ))}
             </div>
             {mode === '1x2' ? (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="swap-in grid grid-cols-3 gap-2">
                 {(['H', 'D', 'A'] as const).map((o) => {
                   const active = myTip?.kind === '1x2' && myTip.outcome === o
                   return (
@@ -97,7 +99,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
                 })}
               </div>
             ) : (
-              <form className="flex items-center justify-center gap-3"
+              <form className="swap-in flex items-center justify-center gap-3"
                 onSubmit={(e) => { e.preventDefault(); save({ kind: 'exact', home_goals: Number(h), away_goals: Number(a) }) }}>
                 <input aria-label={`Góly ${home.name}`} inputMode="numeric" type="number" min={0} max={20} required value={h}
                   onChange={(e) => setH(e.target.value)} className="scoreboard h-14 w-16 rounded-lg border-2 border-neutral-300 text-center text-3xl" />
