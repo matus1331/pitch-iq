@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(27);
 
 -- Test-only data: a played round (9012) for the players' IQ and an open round (9013).
 insert into teams (id, code, name, short_name) values (9001, 3, 'Arsenal', 'ARS'), (9009, 11, 'Everton', 'EVE')
@@ -82,6 +82,10 @@ set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000f2","r
 select is((select count(*)::int from profiles), 0, 'non_member_sees_no_profiles');
 select is((select count(*)::int from duels), 0, 'non_member_sees_no_duels');
 select is((select count(*)::int from match_tips), 0, 'non_member_sees_no_tips');
+
+-- Helpers are not callable by clients, so nobody can read another player's IQ with them.
+select throws_ok($$select iq_in('00000000-0000-0000-0000-0000000000b2', 'individual')$$, '42501', null, 'iq_in_not_callable_by_clients');
+select throws_ok($$select duel_free_iq('00000000-0000-0000-0000-0000000000b2', 'individual')$$, '42501', null, 'duel_free_iq_not_callable_by_clients');
 
 select * from finish();
 rollback;
