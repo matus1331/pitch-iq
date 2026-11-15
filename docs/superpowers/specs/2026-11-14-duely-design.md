@@ -13,7 +13,7 @@ Duel nepridáva nové tipy, len zvyšuje stávku na tipy, ktoré sa zadávajú a
 - **Kolo duelu:** najbližšie kolo, v ktorom ešte nezačal žiadny zápas.
 - **Stávka:** 5, 10 alebo 20 IQ. Súčet stávok prijatých duelov a vlastných odoslaných výziev hráča v kategórii
   nesmie presiahnuť jeho IQ v nej — vyzývateľovi sa kontroluje pri výzve, súperovi pri prijatí.
-- **Minimum:** kým hráč nemá v kategórii aspoň 5 voľného IQ (najnižšia stávka), duel v nej nezačne. Vyzvať sa dá len hráč,
+- **Minimum:** kým vyzývateľ aj súper nemajú v kategórii aspoň 10 voľného IQ, duel v nej nezačne (zmenené z 5 IQ 15. 11.). Vyzvať sa dá len hráč,
   ktorý má na stávku dosť voľného IQ. Voľné IQ = IQ mínus stávky prijatých duelov a vlastných odoslaných výziev;
   prijaté, ale ešte nezodpovedané výzvy IQ neviažu (doplnené 14. 11.).
 - **Limity:** najviac 2 otvorené duely na kolo na hráča, s tým istým súperom v kole len jeden (v jednej kategórii).

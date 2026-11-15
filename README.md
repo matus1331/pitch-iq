@@ -2,7 +2,7 @@
 
 Bezplatná tipovačka Premier League pre partiu kamošov. Hráči zbierajú IQ body a stúpajú v leveloch (1–25). Súťaže:
 
-- **tipovanie výsledkov**: za správneho víťaza 2 IQ, za presný výsledok 5 IQ,
+- **tipovanie výsledkov**: za správneho víťaza alebo remízu 3 IQ, za presný výsledok 9 IQ (ak nesedí skóre, ale sedí víťaz alebo remíza, 1 IQ),
 - **klubová súťaž**: pri každom zápase svojho klubu vyberieš 3 tipy zo šestice, ktorá sa losuje raz na kolo pre všetkých,
 - **duely**: vyzveš kamoša o 5, 10 alebo 20 IQ vo Výsledkoch alebo v Klube; kto naberie v kole v tej kategórii viac IQ, berie stávku.
 

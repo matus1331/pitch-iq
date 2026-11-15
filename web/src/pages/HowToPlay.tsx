@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { MAX_LEVEL, TITLES } from '@shared/level.ts'
 
 const STEPS = [
-  { title: 'Tipuj zápasy kola', text: 'Pri každom zápase vyber víťaza alebo remízu (2 IQ), alebo trafíš presný výsledok (5 IQ). Tip môžeš meniť až do výkopu.' },
+  { title: 'Tipuj zápasy kola', text: 'Pri každom zápase vyber víťaza alebo remízu (3 IQ), alebo tipni presný výsledok: trafený za 9 IQ, a keď sedí aspoň víťaz alebo remíza, dostaneš 1 IQ. Tip môžeš meniť až do výkopu.' },
   { title: 'Vyber tri tipy pre svoj klub', text: 'V záložke Môj klub dostaneš ku každému zápasu šesť tipov, napríklad kto dá gól. Vyber si tri, body sú za tie, ktoré vyjdú.' },
   { title: 'Zbieraj IQ a vyzývaj kamošov', text: 'Za IQ stúpaš v leveloch. V záložke Duely vyzveš kamoša: kto v kole naberie viac IQ, berie stávku.' },
 ]
@@ -31,8 +31,8 @@ export function HowToPlay() {
         <p><b>Kedy sa tip zamkne:</b> každý zápas pri svojom výkope. Tipy ostatných uvidíš až potom.</p>
         <p><b>Kedy pribudnú body:</b> do pár minút po skončení zápasu. Počas zápasu sú predbežné.</p>
         <p><b>Klubové tipy:</b> šestica sa losuje na každé kolo a je rovnaká pre všetkých. Klub si vyberáš raz na celú sezónu.</p>
-        <p><b>Duely:</b> hráte buď o Zápasy, alebo o Klub. Stávka je 5, 10 alebo 20 IQ a obaja v tej kategórii musíte mať aspoň toľko voľného IQ. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky.</p>
-        <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne, ani keď prehráš duel. Tituly: {TITLES.map((t) => t.title).join(', ')}.</p>
+        <p><b>Duely:</b> hráte buď o Zápasy, alebo o Klub. Stávka je 5, 10 alebo 20 IQ. Duel začne, len keď obaja máte v tej kategórii aspoň 10 voľného IQ, a nikto nesmie staviť viac, ako má voľného. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky.</p>
+        <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne, ani keď prehráš duel. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
       </div>
       <Link to="/" className="inline-block font-semibold underline underline-offset-4">Späť na kolo</Link>
     </section>

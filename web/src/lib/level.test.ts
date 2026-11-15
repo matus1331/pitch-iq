@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { iqTotals, levelFor, MAX_LEVEL } from '@shared/level.ts'
+import { iqTotals, levelFor, MAX_LEVEL, TITLES } from '@shared/level.ts'
 
 describe('levelFor', () => {
   it('starts at level 1 as a Rookie', () => {
@@ -9,20 +9,25 @@ describe('levelFor', () => {
     expect(levelFor(9)).toMatchObject({ level: 1, progress: 9, needed: 10 })
   })
   it('levels up exactly at the threshold', () => {
-    expect(levelFor(10)).toMatchObject({ level: 2, progress: 0, needed: 12 })
+    expect(levelFor(10)).toMatchObject({ level: 2, progress: 0, needed: 10 })
+    expect(levelFor(31)).toMatchObject({ level: 4, progress: 0, needed: 12 })
   })
   it('changes title every five levels', () => {
-    expect(levelFor(51)).toMatchObject({ level: 4, title: 'Rookie' })
-    expect(levelFor(52)).toMatchObject({ level: 5, title: 'Scout' })
-    expect(levelFor(162)).toMatchObject({ level: 10, title: 'Analyst' })
-    expect(levelFor(322)).toMatchObject({ level: 15, title: 'Tactician' })
-    expect(levelFor(532)).toMatchObject({ level: 20, title: 'Mastermind' })
+    expect(levelFor(42)).toMatchObject({ level: 4, title: 'Rookie' })
+    expect(levelFor(43)).toMatchObject({ level: 5, title: 'Scout' })
+    expect(levelFor(111)).toMatchObject({ level: 10, title: 'Analyst' })
+    expect(levelFor(292)).toMatchObject({ level: 20, title: 'Strategist' })
+    expect(levelFor(405)).toMatchObject({ level: 25, title: 'Pundit' })
+    expect(levelFor(1156)).toMatchObject({ level: 49, title: 'Hall of Famer' })
   })
-  it('caps at the max level as a PitchIQ Legend', () => {
-    expect(MAX_LEVEL).toBe(25)
-    expect(levelFor(791)).toMatchObject({ level: 24 })
-    expect(levelFor(792)).toMatchObject({ level: 25, title: 'PitchIQ Legend', needed: null })
-    expect(levelFor(5000)).toMatchObject({ level: 25, needed: null })
+  it('caps at level 50 as a PitchIQ Legend', () => {
+    expect(MAX_LEVEL).toBe(50)
+    expect(levelFor(1194)).toMatchObject({ level: 49 })
+    expect(levelFor(1195)).toMatchObject({ level: 50, title: 'PitchIQ Legend', needed: null })
+    expect(levelFor(9000)).toMatchObject({ level: 50, needed: null })
+  })
+  it('has a title for every fifth level', () => {
+    expect(TITLES.map((t) => t.from)).toEqual([1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
   })
 })
 

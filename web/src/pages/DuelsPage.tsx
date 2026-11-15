@@ -1,4 +1,4 @@
-import { ChallengeButton, DuelPanel, MIN_STAKE, useDuelRound, useDuelStanding } from '@/components/Duels'
+import { ChallengeButton, DuelPanel, MIN_DUEL_IQ, useDuelRound, useDuelStanding } from '@/components/Duels'
 import { CardsSkeleton } from '@/components/Skeleton'
 import { useProfiles, useSession } from '@/lib/data'
 import { DUEL_CATEGORIES, duelRecord, rankRows } from '@/lib/standings'
@@ -36,7 +36,7 @@ export function DuelsPage() {
                       <td className="py-1.5">{c.label}</td>
                       <td className="scoreboard text-right">{x.iq}</td>
                       <td className="scoreboard text-right">{x.locked}</td>
-                      <td className={`scoreboard text-right ${x.free >= MIN_STAKE ? 'text-green-800' : 'text-red-700'}`}>{Math.max(0, x.free)}</td>
+                      <td className={`scoreboard text-right ${x.free >= MIN_DUEL_IQ ? 'text-green-800' : 'text-red-700'}`}>{Math.max(0, x.free)}</td>
                     </tr>
                   )
                 })}
@@ -44,7 +44,7 @@ export function DuelsPage() {
             </table>
             <p className="mt-2 text-xs leading-relaxed text-neutral-500">
               Stávky prijatých duelov a tvojich odoslaných výziev sú v dueloch, kým sa duel nevyhodnotí. Duel v kategórii začneš,
-              keď v nej ty aj súper máte aspoň {MIN_STAKE} voľného IQ. S jedným hráčom môžeš mať v kole len jeden duel.
+              keď v nej ty aj súper máte aspoň {MIN_DUEL_IQ} voľného IQ. S jedným hráčom môžeš mať v kole len jeden duel.
             </p>
           </div>
 

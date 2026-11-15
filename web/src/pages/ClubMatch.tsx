@@ -31,7 +31,7 @@ export function ClubMatch({ profile }: { profile: Profile }) {
       const [offers, tips, players] = await Promise.all([
         supabase.from('club_tip_offers').select('*').eq('team_id', club).in('fixture_id', ids),
         supabase.from('club_tips').select('*').eq('user_id', profile.id).in('fixture_id', ids),
-        supabase.from('players').select('id, web_name, position').eq('team_id', club).order('web_name'),
+        supabase.from('players').select('id, web_name, position, status, chance_next, news, start_pct').eq('team_id', club).order('web_name'),
       ])
       return {
         fixtures,

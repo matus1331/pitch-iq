@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TipDef } from '@shared/catalog.ts'
 import { Button } from '@/components/ui/button'
+import { availability, type PlayerAvailability } from '@/lib/availability'
 
 export interface ClubTip {
   user_id: string
@@ -10,7 +11,20 @@ export interface ClubTip {
   value: number | null
   points: number | null
 }
-export interface Player { id: number; web_name: string; position: number }
+export interface Player extends PlayerAvailability { id: number; web_name: string; position: number }
+
+/** Option text: the injury icon for players who are out, otherwise the role icon and the chance of playing. */
+function optionText(p: Player) {
+  const a = availability(p)
+  if (a.icon) return `${a.icon} ${p.web_name}`
+  return `${a.role ? `${a.role.icon} ` : ''}${p.web_name} · ${a.chance} % že nastúpi`
+}
+
+/** Tooltip: the role in words and FPL's news, e.g. "Stály hráč · Knock - 75% chance of playing". */
+function tooltip(p: Player) {
+  const a = availability(p)
+  return [a.role?.label, a.note].filter(Boolean).join(' · ') || undefined
+}
 
 const POSITION = ['', 'Brankári', 'Obrancovia', 'Záložníci', 'Útočníci']
 
@@ -28,7 +42,9 @@ export function ClubTipField({ def, tip, players, editable, full, onSave, onRemo
   const [value, setValue] = useState(tip?.value?.toString() ?? '')
   const [open, setOpen] = useState(false)
   const chosen = !!tip
-  const playerName = players.find((p) => p.id === tip?.player_id)?.web_name
+  const tipped = players.find((p) => p.id === tip?.player_id)
+  const playerName = tipped && optionText(tipped)
+  const picked = players.find((p) => p.id === Number(playerId))
 
   const answer = def.input === 'player' ? playerName : def.input === 'number' ? tip?.value : 'áno'
 
@@ -55,7 +71,7 @@ export function ClubTipField({ def, tip, players, editable, full, onSave, onRemo
 
       {chosen && !open && (
         <div className="mt-2 flex items-center justify-between">
-          <p>Tvoj tip: <strong>{answer}</strong></p>
+          <p>Tvoj tip: <strong title={tipped && tooltip(tipped)}>{answer}</strong></p>
           {editable && (
             <span className="flex gap-2">
               {def.input !== 'claim' && <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Zmeniť</Button>}
@@ -80,7 +96,9 @@ export function ClubTipField({ def, tip, players, editable, full, onSave, onRemo
               <option value="">Vyber hráča</option>
               {[1, 2, 3, 4].map((pos) => (
                 <optgroup key={pos} label={POSITION[pos]}>
-                  {players.filter((p) => p.position === pos).map((p) => <option key={p.id} value={p.id}>{p.web_name}</option>)}
+                  {players.filter((p) => p.position === pos)
+                    .sort((a, b) => Number(!!availability(a).icon) - Number(!!availability(b).icon))
+                    .map((p) => <option key={p.id} value={p.id} title={tooltip(p)}>{optionText(p)}</option>)}
                 </optgroup>
               ))}
             </select>
@@ -93,6 +111,23 @@ export function ClubTipField({ def, tip, players, editable, full, onSave, onRemo
           <Button type="button" variant="ghost" className="h-10" onClick={() => setOpen(false)}>Späť</Button>
         </form>
       )}
+      {editable && open && def.input === 'player' && picked && <PickedInfo p={picked} />}
+      {editable && open && def.input === 'player' && (
+        <p className="mt-2 text-xs text-neutral-500">
+          Šanca, že hráč nastúpi, je všeobecný odhad: ako často tento rok začínal v základnej 11, pri zdravotnom
+          probléme podľa FPL nižšia. 🟢 stály hráč · 🟡 občas hrá · ⚪ náhradník. Skutočnú zostavu FPL pred zápasom nezverejňuje.
+        </p>
+      )}
     </li>
+  )
+}
+
+/** Under the picker, since phones do not show tooltips in a select: role, chance and FPL's news. */
+function PickedInfo({ p }: { p: Player }) {
+  const a = availability(p)
+  return (
+    <p className={`mt-2 text-sm ${a.icon || a.note ? 'text-red-700' : 'text-neutral-700'}`}>
+      {a.icon ?? a.role?.icon} {a.icon ? a.note : [a.role?.label, `${a.chance} % že nastúpi`, a.note].filter(Boolean).join(' · ')}
+    </p>
   )
 }

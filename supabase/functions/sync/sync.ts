@@ -53,15 +53,22 @@ function statsFromExplain(entry: Json): PlayerStats {
 export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtures: number; scored: number }> {
   // 1. reference data
   const boot = await fpl.fetchBootstrap()
+  const raw = await fpl.fetchFixtures()
+  // ponytail: season-long start share; a player who joined mid-season looks rarer than he is.
+  const played = new Map<number, number>()
+  for (const f of raw) if (f.finished_provisional) for (const t of [f.team_h, f.team_a]) played.set(t, (played.get(t) ?? 0) + 1)
+  const startPct = (e: Json) => played.get(e.team) ? Math.min(100, Math.round((100 * (e.starts ?? 0)) / played.get(e.team)!)) : null
   must(await db.from('teams').upsert(boot.teams.map((t: Json) => ({ id: t.id, code: t.code, name: t.name, short_name: t.short_name }))))
-  must(await db.from('players').upsert(boot.elements.map((e: Json) => ({ id: e.id, team_id: e.team, web_name: e.web_name, position: e.element_type }))))
+  must(await db.from('players').upsert(boot.elements.map((e: Json) => ({
+    id: e.id, team_id: e.team, web_name: e.web_name, position: e.element_type,
+    status: e.status ?? 'a', chance_next: e.chance_of_playing_next_round ?? null, news: e.news || null, start_pct: startPct(e),
+  }))))
   must(await db.from('gameweeks').upsert(boot.events.map((e: Json) => ({
     id: e.id, deadline_time: e.deadline_time, is_current: e.is_current, is_next: e.is_next, finished: e.finished,
   }))))
   const current: number = (boot.events.find((e: Json) => e.is_current) ?? boot.events.find((e: Json) => !e.finished) ?? boot.events.at(-1)).id
 
   // 2. fixtures (all, so postponements are seen)
-  const raw = await fpl.fetchFixtures()
   const perTeamGw = new Map<string, number>()
   for (const f of raw) if (f.event != null) for (const t of [f.team_h, f.team_a]) perTeamGw.set(`${f.event}:${t}`, (perTeamGw.get(`${f.event}:${t}`) ?? 0) + 1)
   const isDouble = (gw: number | null, team: number) => gw != null && (perTeamGw.get(`${gw}:${team}`) ?? 0) > 1

@@ -93,7 +93,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
               {(['1x2', 'exact'] as const).map((m) => (
                 <button key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
                   className={`relative rounded-md py-1.5 font-semibold transition-colors duration-300 ${mode === m ? '' : 'text-neutral-500'}`}>
-                  {m === '1x2' ? 'Víťaz · 2 IQ' : 'Presný výsledok · 5 IQ'}
+                  {m === '1x2' ? 'Víťaz · 3 IQ' : 'Presný výsledok · 9 IQ'}
                 </button>
               ))}
             </div>
@@ -144,7 +144,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
             </ul>
             <p className="mt-2 border-t border-neutral-100 pt-2 text-xs leading-relaxed text-neutral-500">
               Tip: 1 = výhra {home.short_name}, X = remíza, 2 = výhra {away.short_name}, číslo ako 2:1 = presný výsledok.
-              IQ = body za tip: 2 za správneho víťaza alebo remízu, 5 za presný výsledok
+              IQ = body za tip: 3 za správneho víťaza alebo remízu, 9 za presný výsledok, 1 keď pri presnom výsledku sedí aspoň víťaz
               {state === 'locked' ? '. Body pribudnú po skončení zápasu.' : '.'}
             </p>
           </>

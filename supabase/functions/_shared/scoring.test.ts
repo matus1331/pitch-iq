@@ -27,17 +27,23 @@ function ctx(
   }
 }
 
-Deno.test('match tip: 1x2 draw on 0:0 scores 2', () => {
-  assertEquals(scoreMatchTip({ kind: '1x2', outcome: 'D' }, 0, 0), 2)
+Deno.test('match tip: 1x2 draw on 0:0 scores 3', () => {
+  assertEquals(scoreMatchTip({ kind: '1x2', outcome: 'D' }, 0, 0), 3)
 })
-Deno.test('match tip: exact 0:0 scores 5', () => {
-  assertEquals(scoreMatchTip({ kind: 'exact', home_goals: 0, away_goals: 0 }, 0, 0), 5)
+Deno.test('match tip: exact 0:0 scores 9', () => {
+  assertEquals(scoreMatchTip({ kind: 'exact', home_goals: 0, away_goals: 0 }, 0, 0), 9)
 })
-Deno.test('match tip: exact with right winner but wrong score scores 0', () => {
-  assertEquals(scoreMatchTip({ kind: 'exact', home_goals: 2, away_goals: 1 }, 1, 0), 0)
+Deno.test('match tip: exact with right winner but wrong score scores 1', () => {
+  assertEquals(scoreMatchTip({ kind: 'exact', home_goals: 2, away_goals: 1 }, 1, 0), 1)
 })
-Deno.test('match tip: 1x2 home win scores 2', () => {
-  assertEquals(scoreMatchTip({ kind: '1x2', outcome: 'H' }, 1, 0), 2)
+Deno.test('match tip: exact draw with wrong score scores 1', () => {
+  assertEquals(scoreMatchTip({ kind: 'exact', home_goals: 1, away_goals: 1 }, 2, 2), 1)
+})
+Deno.test('match tip: exact with wrong winner scores 0', () => {
+  assertEquals(scoreMatchTip({ kind: 'exact', home_goals: 0, away_goals: 1 }, 1, 0), 0)
+})
+Deno.test('match tip: 1x2 home win scores 3', () => {
+  assertEquals(scoreMatchTip({ kind: '1x2', outcome: 'H' }, 1, 0), 3)
 })
 Deno.test('match tip: 1x2 wrong outcome scores 0', () => {
   assertEquals(scoreMatchTip({ kind: '1x2', outcome: 'A' }, 1, 0), 0)

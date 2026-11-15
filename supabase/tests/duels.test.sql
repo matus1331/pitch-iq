@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(29);
 
 -- Test-only data: a played round (9012) for the players' IQ and an open round (9013).
 insert into teams (id, code, name, short_name) values (9001, 3, 'Arsenal', 'ARS'), (9009, 11, 'Everton', 'EVE')
@@ -20,11 +20,12 @@ insert into profiles (id, nickname) values
   ('00000000-0000-0000-0000-0000000000c2', 'pgtap_duel_c'),
   ('00000000-0000-0000-0000-0000000000d2', 'pgtap_duel_d'),
   ('00000000-0000-0000-0000-0000000000e2', 'pgtap_duel_e');
--- a has 15 IQ, b 25, c 5 (the minimum stake), d none, e 10.
+-- a has 25 IQ, b 25, c 10 (the duel minimum), d 9 (one short), e 10.
 insert into match_tips (user_id, fixture_id, kind, outcome, points) values
-  ('00000000-0000-0000-0000-0000000000a2', 9200, '1x2', 'H', 15),
+  ('00000000-0000-0000-0000-0000000000a2', 9200, '1x2', 'H', 25),
   ('00000000-0000-0000-0000-0000000000b2', 9200, '1x2', 'H', 25),
-  ('00000000-0000-0000-0000-0000000000c2', 9200, '1x2', 'H', 5),
+  ('00000000-0000-0000-0000-0000000000c2', 9200, '1x2', 'H', 10),
+  ('00000000-0000-0000-0000-0000000000d2', 9200, '1x2', 'H', 9),
   ('00000000-0000-0000-0000-0000000000e2', 9200, '1x2', 'H', 10);
 
 create temp table ids (name text primary key, id bigint);
@@ -40,13 +41,17 @@ select is((select status from duels where id = (select id from ids where name = 
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'individual')$$, 'DUEL_EXISTS', 'one_duel_per_pair');
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'club')$$, 'DUEL_EXISTS', 'one_duel_per_pair_across_categories');
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'club')$$, 'DUEL_NOT_ENOUGH_IQ', 'club_duel_needs_club_iq');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000c2', 10, 'individual')$$, 'DUEL_STAKE_TOO_HIGH', 'open_stakes_cannot_exceed_iq');
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000c2', 20, 'individual')$$, 'DUEL_STAKE_TOO_HIGH', 'open_stakes_cannot_exceed_iq');
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000d2', 5, 'individual')$$, 'DUEL_OPPONENT_NO_IQ', 'cannot_challenge_player_without_iq');
-insert into ids select 'ac', id from challenge_duel('00000000-0000-0000-0000-0000000000c2', 5, 'individual');
+insert into ids select 'ac', id from challenge_duel('00000000-0000-0000-0000-0000000000c2', 10, 'individual');
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual')$$, 'DUEL_LIMIT', 'two_open_duels_per_round');
 select throws_ok($$insert into duels (gameweek_id, challenger_id, opponent_id, stake) values (9013, auth.uid(), '00000000-0000-0000-0000-0000000000d2', 5)$$,
   '42501', null, 'direct_insert_forbidden');
 
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000d2","role":"authenticated"}';
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual')$$, 'DUEL_NOT_ENOUGH_IQ', 'nine_iq_is_below_duel_minimum');
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000e2","role":"authenticated"}';
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000d2', 5, 'individual')$$, 'DUEL_OPPONENT_NO_IQ', 'opponent_needs_duel_minimum');
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000d2","role":"authenticated"}';
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'individual')$$, 'DUEL_NOT_ENOUGH_IQ', 'locked_below_minimum_iq');
 

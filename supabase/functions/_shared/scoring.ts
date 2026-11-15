@@ -38,9 +38,14 @@ export interface ClubTip {
 }
 
 export function scoreMatchTip(tip: MatchTip, home: number, away: number): number {
-  if (tip.kind === 'exact') return tip.home_goals === home && tip.away_goals === away ? 5 : 0
-  const outcome = home > away ? 'H' : home < away ? 'A' : 'D'
-  return tip.outcome === outcome ? 2 : 0
+  const outcomeOf = (h: number, a: number) => (h > a ? 'H' : h < a ? 'A' : 'D')
+  const outcome = outcomeOf(home, away)
+  if (tip.kind === 'exact') {
+    if (tip.home_goals == null || tip.away_goals == null) return 0
+    if (tip.home_goals === home && tip.away_goals === away) return 9
+    return outcomeOf(tip.home_goals, tip.away_goals) === outcome ? 1 : 0
+  }
+  return tip.outcome === outcome ? 3 : 0
 }
 
 type StatFn = (s: PlayerStats) => number

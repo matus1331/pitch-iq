@@ -1,16 +1,22 @@
-export const MAX_LEVEL = 25
+export const MAX_LEVEL = 50
 
-// Level L -> L+1 costs 10 + 2(L-1) IQ, so reaching level L takes (L-1)(L+8) IQ in total.
-// Level 25 (792 IQ) is a very good full season at ~20 IQ per round.
-const threshold = (level: number) => (level - 1) * (level + 8)
+// Reaching level L takes 10(L-1) + floor(0.3(L-1)(L-2)) IQ: each level costs 10 IQ plus a bit more
+// every level (10, 10, 11, 12 ... 39). Level 50 (1195 IQ) is a great full season at ~31 IQ per round
+// with 3 IQ per right result and 9 per exact score.
+const threshold = (level: number) => 10 * (level - 1) + Math.floor((3 * (level - 1) * (level - 2)) / 10)
 
 export const TITLES = [
   { from: 1, title: 'Rookie', about: 'začínajúci tipér' },
   { from: 5, title: 'Scout', about: 'futbalový pozorovateľ' },
   { from: 10, title: 'Analyst', about: 'analytik' },
   { from: 15, title: 'Tactician', about: 'taktik' },
-  { from: 20, title: 'Mastermind', about: 'futbalový génius' },
-  { from: 25, title: 'PitchIQ Legend', about: 'absolútna špička' },
+  { from: 20, title: 'Strategist', about: 'stratég' },
+  { from: 25, title: 'Pundit', about: 'televízny expert' },
+  { from: 30, title: 'Mastermind', about: 'futbalový génius' },
+  { from: 35, title: 'Gaffer', about: 'tréner, ktorý vidí všetko' },
+  { from: 40, title: 'Oracle', about: 'veštec' },
+  { from: 45, title: 'Hall of Famer', about: 'člen siene slávy' },
+  { from: 50, title: 'PitchIQ Legend', about: 'absolútna špička' },
 ]
 
 export function levelFor(iq: number) {

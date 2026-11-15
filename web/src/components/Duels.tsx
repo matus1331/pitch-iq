@@ -8,7 +8,8 @@ import { categoryIq, DUEL_CATEGORIES, playerIq } from '@/lib/standings'
 import { errorText, must, supabase } from '@/lib/supabase'
 
 const STAKES = [5, 10, 20] as const
-export const MIN_STAKE = STAKES[0]
+/** Free IQ both players need in a category to start a duel in it (challenge_duel checks the same). */
+export const MIN_DUEL_IQ = 10
 
 /** IQ, level and the IQ still free to bet per category, for any player; everything duels need to decide. */
 export function useDuelStanding(userId: string) {
@@ -167,11 +168,11 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
   if (busyPair) return <span className="w-16 text-center text-xs leading-tight text-neutral-500">V dueli</span>
   const options = DUEL_CATEGORIES.map((c) => {
     const mine = s.cat(userId, c.id).free, theirs = s.cat(opponent.id, c.id).free
-    return { ...c, mine, theirs, ok: mine >= MIN_STAKE && theirs >= MIN_STAKE }
+    return { ...c, mine, theirs, ok: mine >= MIN_DUEL_IQ && theirs >= MIN_DUEL_IQ }
   })
   if (!options.some((o) => o.ok)) {
     return <span className="w-16 text-center text-xs leading-tight text-neutral-500"
-      title={`Duel sa dá začať, keď ty aj ${opponent.nickname} máte v jednej kategórii aspoň ${MIN_STAKE} voľného IQ.`}>Málo IQ na duel</span>
+      title={`Duel sa dá začať, keď ty aj ${opponent.nickname} máte v jednej kategórii aspoň ${MIN_DUEL_IQ} voľného IQ.`}>Málo IQ na duel</span>
   }
   const chosen = options.find((o) => o.id === category)
   const underdog = s.levelOf(userId) < s.levelOf(opponent.id)
