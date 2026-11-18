@@ -4,6 +4,9 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { registerServiceWorker } from './lib/push'
+
+registerServiceWorker()
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } })
 

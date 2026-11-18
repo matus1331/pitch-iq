@@ -49,6 +49,18 @@ npm --prefix web run dev
 
 Lokálny pozývací kód je `kamosi` (`supabase/seed.sql`).
 
+### Push notifikácie
+
+Funkcia `sync` po každej synchronizácii pošle pripomienku 24 hodín pred prvým zápasom kola (len tým, ktorí nemajú všetko natipované) a správu, keď sa odohrajú všetky zápasy kola. Hráč si ich zapne v Profile. Na iPhone fungujú len v appke pridanej na plochu (iOS 16.4+).
+
+Kľúče vygeneruješ raz:
+
+```bash
+npx deno eval --config supabase/functions/deno.json "import w from 'npm:web-push@3.6.7'; console.log(w.generateVAPIDKeys())"
+```
+
+`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` a `VAPID_SUBJECT` (napr. `mailto:ty@example.com`) daj do Supabase secrets (lokálne do `supabase/functions/.env`). Verejný kľúč patrí aj do webu ako `VITE_VAPID_PUBLIC_KEY`. Bez kľúčov sa notifikácie nepošlú a v Profile sa tlačidlo nezobrazí.
+
 ### Testy
 
 ```bash

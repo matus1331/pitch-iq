@@ -1,6 +1,7 @@
 import { CalendarDays, ListOrdered, Shield, Swords, UserRound } from 'lucide-react'
 import { flushSync } from 'react-dom'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { PushPrompt } from '@/components/PushPrompt'
 import { type Profile, useDuels, useIqRows } from '@/lib/data'
 import { levelFor } from '@shared/level.ts'
 import { playerIq } from '@/lib/standings'
@@ -41,6 +42,7 @@ export function Shell({ profile }: { profile: Profile }) {
           <p className="truncate text-sm">{profile.nickname}{lv ? ` · Lv ${lv.level} ${lv.title}` : ''}</p>
         </div>
       </header>
+      <PushPrompt />
       <main className="page flex-1 px-3 pb-24">
         <div key={pathname} className={canMorph ? '' : 'page-enter'}>
           <Outlet />

@@ -33,6 +33,7 @@ const MESSAGES: Record<string, string> = {
   DUEL_OPPONENT_NO_IQ: 'Súper nemá v tejto kategórii aspoň 10 voľného IQ alebo dosť na takú stávku.',
   DUEL_NOT_YOURS: 'Tento duel nie je tvoj.',
   DUEL_NOT_PENDING: 'Na tento duel sa už odpovedalo.',
+  PUSH_INVALID: 'Notifikácie sa nepodarilo zapnúť. Skús to znova.',
   DUEL_CLOSED: 'Kolo už začalo, na výzvu sa už nedá odpovedať.',
 }
 

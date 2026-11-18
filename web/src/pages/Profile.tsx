@@ -1,5 +1,6 @@
 import { BookOpen, LogOut } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { PushToggle } from '@/components/PushToggle'
 import { CardsSkeleton } from '@/components/Skeleton'
 import { badgeUrl } from '@/lib/clubColors'
 import { type Profile as ProfileRow, type Team, useDuels, useIqRows } from '@/lib/data'
@@ -82,6 +83,8 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
           </dl>
         )}
       </div>
+
+      <PushToggle />
 
       <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
         <h2 className="mb-2 font-semibold">Tituly</h2>
