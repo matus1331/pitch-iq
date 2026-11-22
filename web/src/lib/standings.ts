@@ -10,12 +10,12 @@ export function totals(rows: RoundRow[], profiles: { id: string; nickname: strin
   return profiles.map((p) => ({ user_id: p.id, nickname: p.nickname, points: sum.get(p.id) ?? 0 }))
 }
 
-/** Descending by points; ties share a rank (1, 1, 3); ties ordered by nickname. */
+/** Descending by points; ties share a rank and the next rank follows without a gap (1, 2, 2, 3); ties ordered by nickname. */
 export function rankRows<T extends Row>(rows: T[]): (T & { rank: number })[] {
   const sorted = [...rows].sort((a, b) => b.points - a.points || a.nickname.localeCompare(b.nickname, 'sk'))
   let rank = 0
   return sorted.map((r, i) => {
-    if (i === 0 || sorted[i - 1].points !== r.points) rank = i + 1
+    if (i === 0 || sorted[i - 1].points !== r.points) rank++
     return { ...r, rank }
   })
 }

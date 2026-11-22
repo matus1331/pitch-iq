@@ -3,13 +3,14 @@ import type { Duel } from './data'
 import { categoryIq, duelRecord, iqSummary, playerIq, rankRows, totals } from './standings'
 
 describe('rankRows', () => {
-  it('gives equal points the same rank and skips the next', () => {
+  it('gives equal points the same rank and does not skip the next', () => {
     const r = rankRows([
       { user_id: 'c', nickname: 'Cyril', points: 7 },
       { user_id: 'b', nickname: 'Beta', points: 10 },
       { user_id: 'a', nickname: 'alfa', points: 10 },
+      { user_id: 'd', nickname: 'Dan', points: 7 },
     ])
-    expect(r.map((x) => [x.nickname, x.rank])).toEqual([['alfa', 1], ['Beta', 1], ['Cyril', 3]])
+    expect(r.map((x) => [x.nickname, x.rank])).toEqual([['alfa', 1], ['Beta', 1], ['Cyril', 2], ['Dan', 2]])
   })
   it('handles empty input', () => {
     expect(rankRows([])).toEqual([])
