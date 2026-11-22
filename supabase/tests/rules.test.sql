@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(15);
 
 -- seed (as postgres, bypasses RLS)
 insert into auth.users (id, email) values
@@ -39,6 +39,10 @@ select throws_ok(
 select lives_ok(
   $$insert into match_tips (user_id, fixture_id, kind, home_goals, away_goals, points) values ('00000000-0000-0000-0000-00000000000a', 9100, 'exact', 2, 1, 99)$$,
   'open tip accepted');
+
+select throws_ok(
+  $$insert into match_tips (user_id, fixture_id, kind, outcome) values ('00000000-0000-0000-0000-00000000000a', 9103, '1x2', 'D')$$,
+  'TIP_EXACT_ONLY', 'one_x_two_rejected_from_round_12');
 
 select is((select points from match_tips where fixture_id = 9100 and user_id = auth.uid()), null::int,
   'client_cannot_set_points');

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { MAX_LEVEL, TITLES } from '@shared/level.ts'
 
 const STEPS = [
-  { title: 'Tipuj zápasy kola', text: 'Pri každom zápase vyber víťaza alebo remízu (3 IQ), alebo tipni presný výsledok: trafený za 9 IQ, a keď sedí aspoň víťaz alebo remíza, dostaneš 1 IQ. Tip môžeš meniť až do výkopu.' },
+  { title: 'Tipuj zápasy kola', text: 'Pri každom zápase tipni presný výsledok. Za správneho víťaza alebo remízu dostaneš 3 IQ, za presné skóre ďalšie 3 IQ, spolu 6. Tip 2:2 pri výsledku 0:0 teda dá 3 IQ. Tip môžeš meniť až do výkopu.' },
   { title: 'Vyber tri tipy pre svoj klub', text: 'V záložke Môj klub dostaneš ku každému zápasu šesť tipov, napríklad kto dá gól. Vyber si tri, body sú za tie, ktoré vyjdú.' },
   { title: 'Zbieraj IQ a vyzývaj kamošov', text: 'Za IQ stúpaš v leveloch. V záložke Duely vyzveš kamoša: kto v kole naberie viac IQ, berie stávku.' },
 ]

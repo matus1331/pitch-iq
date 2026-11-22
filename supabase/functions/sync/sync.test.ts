@@ -91,7 +91,7 @@ Deno.test('sync imports fixtures and scores tips', async () => {
   await runSync(db, api([fixture(1001, { kickoff_time: future, started: false, finished_provisional: false, finished: false })]))
   await seedUserWithTips(alfa, 1001)
   await runSync(db, api([fixture(1001)]))
-  assertEquals((await points('match_tips', 1001))[0].points, 9)
+  assertEquals((await points('match_tips', 1001))[0].points, 6)
   const club = Object.fromEntries((await points('club_tips', 1001)).map((r) => [r.tip_key, r.points]))
   assertEquals(club, { player_brace: 6, team_saves_over: 1 })
 })
@@ -103,7 +103,7 @@ Deno.test('sync is idempotent', async () => {
   await runSync(db, api([fixture(1001)]))
   await runSync(db, api([fixture(1001)]))
   assertEquals((await points('match_tips', 1001)).length, 1)
-  assertEquals((await points('match_tips', 1001))[0].points, 9)
+  assertEquals((await points('match_tips', 1001))[0].points, 6)
   assertEquals((await points('club_tips', 1001)).length, 2)
 })
 
@@ -216,7 +216,7 @@ Deno.test('finished round settles accepted duels, underdog winner gets a bonus',
   const { data } = await db.from('duels').select('*').single()
   assertEquals(
     [data!.status, data!.challenger_iq, data!.opponent_iq, data!.challenger_delta, data!.opponent_delta],
-    ['finished', 0, 5, -10, 15],
+    ['finished', 0, 6, -10, 15],
   )
   await runSync(db, api([fixture(1002, { event: GW - 2 }), fixture(1001)]))
   assertEquals((await db.from('duels').select('opponent_delta').single()).data!.opponent_delta, 15) // settled once

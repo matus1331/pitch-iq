@@ -5,6 +5,7 @@ import { badgeUrl } from '@/lib/clubColors'
 import type { Fixture, Profile, Team } from '@/lib/data'
 import { errorText, supabase } from '@/lib/supabase'
 import { tipState } from '@/lib/tipState'
+import { EXACT_ONLY_FROM_GW } from '@shared/scoring.ts'
 
 export interface MatchTip {
   user_id: string
@@ -36,10 +37,20 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
   onSaved: () => void
 }) {
   const state = tipState(fixture)
-  const [mode, setMode] = useState<'1x2' | 'exact'>(myTip?.kind ?? '1x2')
+  // Rounds before EXACT_ONLY_FROM_GW still offer the 1/X/2 tab.
+  const legacy = (fixture.gameweek_id ?? 0) < EXACT_ONLY_FROM_GW
+  const [mode, setMode] = useState<'1x2' | 'exact'>(legacy ? myTip?.kind ?? '1x2' : 'exact')
   const [h, setH] = useState(myTip?.home_goals?.toString() ?? '')
   const [a, setA] = useState(myTip?.away_goals?.toString() ?? '')
   const [error, setError] = useState<string | null>(null)
+
+  // The saved tip can arrive after the first render (loading, refetch): show it in the fields.
+  const [savedH, savedA] = [myTip?.home_goals, myTip?.away_goals]
+  useEffect(() => {
+    if (savedH == null || savedA == null) return
+    setH(String(savedH))
+    setA(String(savedA))
+  }, [savedH, savedA])
 
   async function save(tip: Partial<MatchTip>) {
     setError(null)
@@ -87,16 +98,16 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
       <div className="p-4">
         {state === 'open' ? (
           <>
-            <div role="tablist" className="relative mb-3 grid grid-cols-2 rounded-lg bg-neutral-100 p-1 text-sm">
+            {legacy ? <div role="tablist" className="relative mb-3 grid grid-cols-2 rounded-lg bg-neutral-100 p-1 text-sm">
               <span aria-hidden className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/2)] rounded-md bg-white shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none"
                 style={{ transform: `translateX(${mode === '1x2' ? 0 : 100}%)` }} />
               {(['1x2', 'exact'] as const).map((m) => (
                 <button key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
                   className={`relative rounded-md py-1.5 font-semibold transition-colors duration-300 ${mode === m ? '' : 'text-neutral-500'}`}>
-                  {m === '1x2' ? 'Víťaz · 3 IQ' : 'Presný výsledok · 9 IQ'}
+                  {m === '1x2' ? 'Víťaz · 3 IQ' : 'Presný výsledok · až 6 IQ'}
                 </button>
               ))}
-            </div>
+            </div> : <p className="mb-3 text-center text-sm text-neutral-600">Víťaz alebo remíza <b>3 IQ</b>, presné skóre <b>+3 IQ</b></p>}
             {mode === '1x2' ? (
               <div className="swap-in grid grid-cols-3 gap-2">
                 {(['H', 'D', 'A'] as const).map((o) => {
@@ -144,7 +155,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
             </ul>
             <p className="mt-2 border-t border-neutral-100 pt-2 text-xs leading-relaxed text-neutral-500">
               Tip: 1 = výhra {home.short_name}, X = remíza, 2 = výhra {away.short_name}, číslo ako 2:1 = presný výsledok.
-              IQ = body za tip: 3 za správneho víťaza alebo remízu, 9 za presný výsledok, 1 keď pri presnom výsledku sedí aspoň víťaz
+              IQ = body za tip: 3 za správneho víťaza alebo remízu, ďalšie 3 za presný výsledok
               {state === 'locked' ? '. Body pribudnú po skončení zápasu.' : '.'}
             </p>
           </>

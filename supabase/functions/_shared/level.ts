@@ -2,7 +2,7 @@ export const MAX_LEVEL = 50
 
 // Reaching level L takes 10(L-1) + floor(0.3(L-1)(L-2)) IQ: each level costs 10 IQ plus a bit more
 // every level (10, 10, 11, 12 ... 39). Level 50 (1195 IQ) is a great full season at ~31 IQ per round
-// with 3 IQ per right result and 9 per exact score.
+// with 3 IQ per right result and 6 per exact score.
 const threshold = (level: number) => 10 * (level - 1) + Math.floor((3 * (level - 1) * (level - 2)) / 10)
 
 export const TITLES = [

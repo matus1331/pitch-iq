@@ -37,13 +37,17 @@ export interface ClubTip {
   value?: number | null
 }
 
+/** From this round on only exact scores can be tipped; older 1/X/2 tips still count. */
+export const EXACT_ONLY_FROM_GW = 12
+
+/** Right winner or draw: 3 IQ, plus 3 IQ when the exact score is right too. */
 export function scoreMatchTip(tip: MatchTip, home: number, away: number): number {
   const outcomeOf = (h: number, a: number) => (h > a ? 'H' : h < a ? 'A' : 'D')
   const outcome = outcomeOf(home, away)
   if (tip.kind === 'exact') {
     if (tip.home_goals == null || tip.away_goals == null) return 0
-    if (tip.home_goals === home && tip.away_goals === away) return 9
-    return outcomeOf(tip.home_goals, tip.away_goals) === outcome ? 1 : 0
+    if (outcomeOf(tip.home_goals, tip.away_goals) !== outcome) return 0
+    return tip.home_goals === home && tip.away_goals === away ? 6 : 3
   }
   return tip.outcome === outcome ? 3 : 0
 }

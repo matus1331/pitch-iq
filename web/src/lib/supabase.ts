@@ -18,6 +18,7 @@ const MESSAGES: Record<string, string> = {
   CLUB_TAKEN: 'Tento klub už má iný hráč.',
   CLUB_LOCKED: 'Klub sa počas sezóny nedá zmeniť.',
   TIP_LOCKED: 'Zápas už začal, tip je zamknutý.',
+  TIP_EXACT_ONLY: 'Od 12. kola sa tipuje len presný výsledok.',
   CLUB_TIP_LIMIT: 'Vybrať môžeš najviac 3 tipy.',
   CLUB_TIP_NOT_OFFERED: 'Tento tip nie je v ponuke pre tento zápas.',
   CLUB_TIP_WRONG_FIXTURE: 'Tipovať môžeš len zápasy svojho klubu.',
