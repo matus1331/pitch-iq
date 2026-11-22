@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { levelFor } from '@shared/level.ts'
+import { Link } from 'react-router-dom'
 import { CardsSkeleton } from '@/components/Skeleton'
 import { badgeUrl } from '@/lib/clubColors'
-import { useDuels, useIqRows, useProfiles, useSession, useTeams } from '@/lib/data'
-import { playerIq, rankRows, totals } from '@/lib/standings'
+import { useIqRows, useProfiles, useSession, useTeams, useTipResults } from '@/lib/data'
+import { rankRows, type TipStats, tipStats, totals } from '@/lib/standings'
 
 type Board = 'individual' | 'club'
 const BOARDS: { id: Board; label: string; about: string }[] = [
@@ -16,16 +16,17 @@ export function Standings() {
   const profiles = useProfiles()
   const teams = useTeams()
   const iq = useIqRows()
-  const duels = useDuels()
+  const tips = useTipResults()
   const [board, setBoard] = useState<Board>('individual')
   const [gw, setGw] = useState<number | null>(null)
   const rows = iq.data?.[board] ?? []
   const players = (profiles.data ?? []).filter((p) => board !== 'club' || p.club_team_id)
-  const ranked = rankRows(totals(rows, players, gw))
+  // Hit counts and accuracy exist for match tips only; they also break ties in points.
+  const stats = board === 'individual' ? tipStats(tips.data ?? [], gw) : new Map<string, TipStats>()
+  const ranked = rankRows(totals(rows, players, gw).map((r) => ({ ...r, exact: stats.get(r.user_id)?.exact, avgError: stats.get(r.user_id)?.avgError })))
   const nobody = ranked.every((r) => r.points === 0)
   const rounds = [...new Set(rows.map((r) => r.gameweek_id))].sort((a, b) => b - a)
   const clubOf = new Map(players.map((p) => [p.id, p.club_team_id]))
-  const level = (u: string) => iq.data && duels.data ? levelFor(playerIq(iq.data.individual, iq.data.club, duels.data, u).peak).level : null
 
   return (
     <section>
@@ -58,26 +59,52 @@ export function Standings() {
           {gw ? 'V tomto kole zatiaľ nikto nezískal IQ.' : 'Zatiaľ nikto nemá IQ. Tabuľka sa naplní po prvých odohraných zápasoch.'}
         </p>
       )}
-      <ol key={`${board}-${gw}`} className="swap-in overflow-hidden rounded-xl bg-white text-neutral-900 shadow-md">
-        {ranked.map((r) => {
-          const team = teams.data?.byId.get(clubOf.get(r.user_id) ?? -1)
-          const me = r.user_id === session?.user.id
-          const lv = level(r.user_id)
-          return (
-            <li key={r.user_id}
-              className={`flex items-center gap-3 border-b border-neutral-100 px-4 py-3 last:border-0 ${me ? 'bg-neutral-100 font-semibold' : ''}`}>
-              <span className="scoreboard w-7 text-xl text-neutral-500">{nobody ? '–' : `${r.rank}.`}</span>
-              {board === 'club' && team && <img src={badgeUrl(team.code)} alt={team.name} className="size-7" />}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate">{r.nickname}{me && ' (ty)'}</span>
-              </span>
-              {lv != null && <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">Lv {lv}</span>}
-              <span className="scoreboard w-10 text-right text-2xl">{r.points}</span>
-            </li>
-          )
-        })}
-        {ranked.length === 0 && <li className="px-4 py-6 text-center text-neutral-500">Zatiaľ tu nikto nie je.</li>}
-      </ol>
+      {(() => {
+        const withStats = board === 'individual'
+        const cols = withStats
+          ? 'grid-cols-[1.5rem_minmax(0,1fr)_repeat(4,2rem)_2.5rem]'
+          : 'grid-cols-[1.5rem_minmax(0,1fr)_2.5rem]'
+        const fmt = (v: number | null | undefined) => v == null ? '–' : v.toFixed(1).replace('.', ',')
+        return (
+          <div key={`t-${board}-${gw}`} className="swap-in overflow-hidden rounded-xl bg-white text-neutral-900 shadow-md">
+            <div className={`grid ${cols} items-center gap-x-1 border-b border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-500`}>
+              <span>#</span><span>Hráč</span>
+              {withStats && ([['🎯', 'presný výsledok'], ['✓', 'správny víťaz alebo remíza'], ['✗', 'netrafené'], ['Ø', 'priemerná chyba v góloch na tip']] as const).map(([icon, hint]) => (
+                <Link key={icon} to="/pravidla#tabulka" title={`${hint} (klikni pre vysvetlenie)`} aria-label={`${hint}, vysvetlenie v pravidlách`}
+                  className="text-center underline decoration-dotted underline-offset-4">{icon}</Link>
+              ))}
+              <span className="text-right">IQ</span>
+            </div>
+            {ranked.map((r) => {
+              const team = teams.data?.byId.get(clubOf.get(r.user_id) ?? -1)
+              const me = r.user_id === session?.user.id
+              const st = stats.get(r.user_id)
+              return (
+                <div key={r.user_id} className={`grid ${cols} items-center gap-x-1 border-b border-neutral-100 px-3 py-2.5 text-sm last:border-0 ${me ? 'bg-neutral-100 font-semibold' : ''}`}>
+                  <span className="scoreboard text-base text-neutral-500">{nobody ? '–' : r.rank}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {board === 'club' && team && <img src={badgeUrl(team.code)} alt={team.name} className="size-5" />}
+                    <span className="truncate">{r.nickname}</span>
+                  </span>
+                  {withStats && <>
+                    <span className="text-center">{st?.exact ?? 0}</span><span className="text-center">{st?.right ?? 0}</span>
+                    <span className="text-center">{st?.wrong ?? 0}</span><span className="text-center text-neutral-600">{fmt(st?.avgError)}</span>
+                  </>}
+                  <span className="scoreboard text-right text-xl">{r.points}</span>
+                </div>
+              )
+            })}
+            {ranked.length === 0 && <p className="px-4 py-6 text-center text-neutral-500">Zatiaľ tu nikto nie je.</p>}
+          </div>
+        )
+      })()}
+      {board === 'individual' && (
+        <p className="mt-2 text-xs">
+          🎯 presný výsledok · ✓ správny víťaz alebo remíza · ✗ netrafené · Ø priemerná chyba v góloch na tip.
+          Pri rovnosti bodov rozhoduje viac presných výsledkov, potom menšia chyba.{' '}
+          <Link to="/pravidla#tabulka" className="font-semibold underline underline-offset-4">Podrobné vysvetlenie</Link>
+        </p>
+      )}
       </>)}
     </section>
   )

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Duel } from './data'
-import { categoryIq, duelRecord, iqSummary, playerIq, rankRows, totals } from './standings'
+import { categoryIq, duelRecord, iqSummary, playerIq, rankRows, tipStats, totals } from './standings'
 
 describe('rankRows', () => {
   it('gives equal points the same rank and does not skip the next', () => {
@@ -86,5 +86,32 @@ describe('categoryIq', () => {
     ]
     expect(categoryIq(tips, duels, 'me', 'individual')).toEqual({ iq: 27, locked: 20, free: 7 })
     expect(categoryIq([], duels, 'me', 'club')).toEqual({ iq: 0, locked: 10, free: -10 })
+  })
+})
+
+describe('rankRows tie-break and tipStats', () => {
+  const r = (nickname: string, points: number, exact?: number, avgError?: number | null) => ({ user_id: nickname, nickname, points, exact, avgError })
+  it('breaks equal points by exact scores, then by smaller miss', () => {
+    const out = rankRows([r('a', 6, 0, 1), r('b', 6, 1, 3), r('c', 6, 0, 2)])
+    expect(out.map((x) => [x.nickname, x.rank])).toEqual([['b', 1], ['a', 2], ['c', 3]])
+  })
+  it('keeps a shared rank when everything is equal', () => {
+    expect(rankRows([r('a', 3, 0, 1), r('b', 3, 0, 1), r('c', 0)]).map((x) => x.rank)).toEqual([1, 1, 2])
+  })
+  it('scores the 3:2 vs 4:0 example on a 2:1 result', () => {
+    const t = (user_id: string, h: number, a: number) => ({
+      user_id, kind: 'exact' as const, home_goals: h, away_goals: a, points: 3, gameweek_id: 1, team_h_score: 2, team_a_score: 1,
+    })
+    const s = tipStats([t('x', 3, 2), t('y', 4, 0)], null)
+    expect([s.get('x')!.avgError, s.get('y')!.avgError, s.get('x')!.right]).toEqual([2, 3, 1])
+  })
+  it('counts exact, right and wrong tips, old 1/X/2 tips without an average', () => {
+    const base = { gameweek_id: 1, team_h_score: 0, team_a_score: 0 }
+    const s = tipStats([
+      { user_id: 'x', kind: 'exact', home_goals: 0, away_goals: 0, points: 6, ...base },
+      { user_id: 'x', kind: 'exact', home_goals: 2, away_goals: 2, points: 3, ...base },
+      { user_id: 'x', kind: '1x2', home_goals: null, away_goals: null, points: 0, ...base },
+    ], 1).get('x')!
+    expect(s).toEqual({ exact: 1, right: 1, wrong: 1, avgError: 2 })
   })
 })

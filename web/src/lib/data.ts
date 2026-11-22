@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { must, supabase } from './supabase'
-import type { RoundRow } from './standings'
+import type { RoundRow, TipResult } from './standings'
 
 export interface Team { id: number; code: number; name: string; short_name: string }
 export interface Profile { id: string; nickname: string; club_team_id: number | null }
@@ -76,6 +76,19 @@ export const useIqRows = () =>
         supabase.from('leaderboard_club').select('*'),
       ])
       return { individual: must(individual) as RoundRow[], club: must(club) as RoundRow[] }
+    },
+  })
+
+/** Scored match tips with the real score, for the standings' hit counts and accuracy. */
+export const useTipResults = () =>
+  useQuery({
+    queryKey: ['tip-results'],
+    queryFn: async () => {
+      // ponytail: PostgREST returns at most 1000 rows; page this once a season has more scored tips.
+      const rows = must(await supabase.from('match_tips')
+        .select('user_id, kind, home_goals, away_goals, points, fixtures(gameweek_id, team_h_score, team_a_score)')
+        .not('points', 'is', null)) as unknown as (Omit<TipResult, 'gameweek_id' | 'team_h_score' | 'team_a_score'> & { fixtures: Pick<TipResult, 'gameweek_id' | 'team_h_score' | 'team_a_score'> | null })[]
+      return rows.map(({ fixtures, ...t }) => ({ ...t, ...fixtures })) as TipResult[]
     },
   })
 
