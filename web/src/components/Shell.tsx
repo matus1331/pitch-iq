@@ -18,7 +18,7 @@ const NAV = [
 export function Shell({ profile }: { profile: Profile }) {
   const iq = useIqRows()
   const duels = useDuels()
-  const lv = iq.data && levelFor(iqSummary(iq.data.individual, iq.data.club, profile.id).total)
+  const lv = iq.data && levelFor(iqSummary(iq.data.individual, iq.data.club, profile.id).peak)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const here = NAV.findIndex((n) => n.to === pathname)

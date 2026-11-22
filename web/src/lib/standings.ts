@@ -1,3 +1,4 @@
+import { iqTotals } from '@shared/level.ts'
 import type { Duel } from './data'
 export interface Row { user_id: string; nickname: string; points: number }
 export interface RoundRow extends Row { gameweek_id: number }
@@ -71,6 +72,7 @@ export function iqSummary(individual: RoundRow[], club: RoundRow[], userId: stri
   const lastRound = rounds.length ? Math.max(...rounds) : null
   return {
     total: mine(individual) + mine(club),
+    peak: iqTotals([...individual, ...club].filter((r) => r.user_id === userId), []).peak,
     lastRound,
     lastRoundIndividual: lastRound == null ? 0 : mine(individual, lastRound),
     lastRoundClub: lastRound == null ? 0 : mine(club, lastRound),

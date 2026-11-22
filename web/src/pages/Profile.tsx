@@ -16,8 +16,8 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
   const s = iqSummary(iq.data.individual, iq.data.club, profile.id)
   const total = s.total
   const rec = duelRecord(duels.data, profile.id)
-  // IQ comes from tips only, so it never drops and the level is simply the current IQ's.
-  const lv = levelFor(total)
+  // IQ can drop after negative lineup points; the level never does because it comes from the peak.
+  const lv = levelFor(s.peak)
   const progress = lv.progress
   const pct = lv.needed ? Math.round((progress / lv.needed) * 100) : 100
 

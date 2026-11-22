@@ -40,14 +40,18 @@ describe('iqSummary', () => {
   const r = (user_id: string, gameweek_id: number, points: number) => ({ user_id, nickname: user_id, gameweek_id, points })
   it('sums both competitions and reports the latest scored round', () => {
     const s = iqSummary([r('me', 9, 4), r('me', 10, 5)], [r('me', 10, 3)], 'me')
-    expect(s).toEqual({ total: 12, lastRound: 10, lastRoundIndividual: 5, lastRoundClub: 3 })
+    expect(s).toEqual({ total: 12, peak: 12, lastRound: 10, lastRoundIndividual: 5, lastRoundClub: 3 })
   })
   it('gives 0 for the last round when the player skipped it', () => {
     const s = iqSummary([r('me', 9, 4), r('other', 10, 5)], [], 'me')
-    expect(s).toEqual({ total: 4, lastRound: 10, lastRoundIndividual: 0, lastRoundClub: 0 })
+    expect(s).toEqual({ total: 4, peak: 4, lastRound: 10, lastRoundIndividual: 0, lastRoundClub: 0 })
+  })
+  it('keeps the peak when lineup points drop the total', () => {
+    const s = iqSummary([r('me', 1, 20)], [r('me', 2, -6)], 'me')
+    expect(s).toMatchObject({ total: 14, peak: 20 })
   })
   it('has no last round before anything is scored', () => {
-    expect(iqSummary([], [], 'me')).toEqual({ total: 0, lastRound: null, lastRoundIndividual: 0, lastRoundClub: 0 })
+    expect(iqSummary([], [], 'me')).toEqual({ total: 0, peak: 0, lastRound: null, lastRoundIndividual: 0, lastRoundClub: 0 })
   })
 })
 

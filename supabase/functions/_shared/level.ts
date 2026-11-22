@@ -1,9 +1,8 @@
 export const MAX_LEVEL = 50
 
-// Reaching level L takes 10(L-1) + floor(0.3(L-1)(L-2)) IQ: each level costs 10 IQ plus a bit more
-// every level (10, 10, 11, 12 ... 39). Level 50 (1195 IQ) is a great full season at ~31 IQ per round
-// with 3 IQ per right result and 6 per exact score.
-const threshold = (level: number) => 10 * (level - 1) + Math.floor((3 * (level - 1) * (level - 2)) / 10)
+// Reaching level L takes 1.75 x (10(L-1) + floor(0.3(L-1)(L-2))) IQ. Level 50 (2091 IQ) is a great
+// full season at ~55 IQ per round including the lineup points, on top of tips (3 per right result, 6 per exact score).
+const threshold = (level: number) => Math.round(1.75 * (10 * (level - 1) + Math.floor((3 * (level - 1) * (level - 2)) / 10)))
 
 export const TITLES = [
   { from: 1, title: 'Rookie', about: 'začínajúci tipér' },

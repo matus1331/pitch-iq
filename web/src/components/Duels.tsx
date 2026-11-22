@@ -39,7 +39,7 @@ export function useDuelStanding(userId: string) {
     rows: iq.data,
     me: userId,
     respect: r,
-    levelOf: (u: string) => levelFor(iqSummary(iq.data.individual, iq.data.club, u).total).level,
+    levelOf: (u: string) => levelFor(iqSummary(iq.data.individual, iq.data.club, u).peak).level,
     /** Match duels a player has used up in a round (same rule as the server). */
     matchDuels: (u: string, gw: number) => duels.data.filter((d) => d.category === 'match' && d.gameweek_id === gw
       && ((['pending', 'accepted', 'finished'].includes(d.status) && [d.challenger_id, d.opponent_id].includes(u))
