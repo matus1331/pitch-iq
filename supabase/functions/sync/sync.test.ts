@@ -256,3 +256,35 @@ Deno.test('an unanswered challenge expires once the round starts', async () => {
   await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false })]))
   assertEquals((await db.from('duels').select('status').single()).data!.status, 'expired')
 })
+
+Deno.test('a match duel settles in Rešpekt when its match is finished', async () => {
+  const { alfa } = await reset()
+  const beta = await addUser('beta', ARS)
+  await ok(db.from('gameweeks').upsert({ id: GW }))
+  await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false })]))
+  // EVE 2:1 ARS. beta holds the away win, alfa took the double chance 1X and wins half the stake.
+  await ok(db.from('duels').insert({
+    gameweek_id: GW, challenger_id: alfa, opponent_id: beta, stake: 10, status: 'accepted',
+    category: 'match', fixture_id: 1001, opponent_pick: 'A', challenger_pick: 'HD',
+  }))
+  await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false })]))
+  assertEquals((await db.from('duels').select('status').single()).data!.status, 'accepted')
+  await runSync(db, api([fixture(1001)]))
+  const { data } = await db.from('duels').select('status, challenger_delta, opponent_delta').single()
+  assertEquals([data!.status, data!.challenger_delta, data!.opponent_delta], ['finished', 5, -5])
+})
+
+Deno.test('a match duel without the challenger\'s pick is withdrawn at kickoff, a postponed one is voided', async () => {
+  const { alfa } = await reset()
+  const beta = await addUser('beta', ARS)
+  await ok(db.from('gameweeks').upsert({ id: GW }))
+  const upcoming = { kickoff_time: future, started: false, finished_provisional: false, finished: false }
+  await runSync(db, api([fixture(1001, upcoming), fixture(1002, upcoming)]))
+  await ok(db.from('duels').insert([
+    { gameweek_id: GW, challenger_id: alfa, opponent_id: beta, stake: 5, status: 'accepted', category: 'match', fixture_id: 1001, opponent_pick: 'H' },
+    { gameweek_id: GW, challenger_id: beta, opponent_id: alfa, stake: 5, status: 'pending', category: 'match', fixture_id: 1002 },
+  ]))
+  await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false }), fixture(1002, { ...upcoming, kickoff_time: null })]))
+  const { data } = await db.from('duels').select('fixture_id, status').order('fixture_id')
+  assertEquals(data!.map((d) => d.status), ['withdrawn', 'cancelled'])
+})

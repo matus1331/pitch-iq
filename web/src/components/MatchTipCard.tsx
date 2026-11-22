@@ -26,8 +26,9 @@ export function tipLabel(t: MatchTip) {
 
 const kickoffFmt = new Intl.DateTimeFormat('sk-SK', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-export function MatchTipCard({ fixture, home, away, myTip, others, profiles, userId, onSaved }: {
+export function MatchTipCard({ fixture, home, away, myTip, others, profiles, userId, onSaved, highlight }: {
   fixture: Fixture
+  highlight?: boolean
   home: Team
   away: Team
   myTip: MatchTip | undefined
@@ -78,7 +79,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
     : 'vs'
 
   return (
-    <article className="rounded-xl bg-white text-neutral-900 shadow-md">
+    <article id={`zapas-${fixture.id}`} className={`rounded-xl bg-white text-neutral-900 shadow-md ${highlight ? 'ring-4 ring-[var(--club-secondary)]' : ''}`}>
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-4">
         <div className="flex items-center gap-2">
           <img src={badgeUrl(home.code)} alt="" className="size-8" />

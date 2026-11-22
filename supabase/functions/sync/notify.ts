@@ -53,7 +53,7 @@ export function dueNotices(
       out.push({ gameweek: gw, kind: 'reminder', messages })
     }
     if (!sent.has(`${gw}:results`) && fx.every((f) => f.finished)) {
-      const msg = { title: `${gw}. kolo je odohrané`, body: 'Pozri sa, koľko IQ si získal a ako dopadli duely.', url: '/tabulky' }
+      const msg = { title: `${gw}. kolo je odohrané`, body: 'Pozri sa, koľko IQ si získal.', url: '/tabulky' }
       out.push({ gameweek: gw, kind: 'results', messages: new Map(users.map((u) => [u, msg])) })
     }
   }

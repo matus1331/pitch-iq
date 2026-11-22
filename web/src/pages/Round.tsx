@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CardsSkeleton } from '@/components/Skeleton'
 import { type MatchTip, MatchTipCard } from '@/components/MatchTipCard'
 import { type Fixture, useGameweeks, useProfiles, useSession, useTeams } from '@/lib/data'
@@ -21,7 +22,10 @@ export function Round() {
   const teams = useTeams()
   const profiles = useProfiles()
   const options = useRoundGws()
-  const [picked, setPicked] = useState<number | null>(null)
+  // A link like /?kolo=12&zapas=119 (from a duel) opens that round and scrolls to the match.
+  const [params] = useSearchParams()
+  const target = Number(params.get('zapas')) || null
+  const [picked, setPicked] = useState<number | null>(Number(params.get('kolo')) || null)
 
   const all = useQuery({
     queryKey: ['fixtures', options],
@@ -39,6 +43,11 @@ export function Round() {
     enabled: ids.length > 0,
     queryFn: async () => must(await supabase.from('match_tips').select('*').in('fixture_id', ids)) as MatchTip[],
   })
+
+  const ready = !!all.data && !!teams.data && !!session
+  useEffect(() => {
+    if (ready && target) document.getElementById(`zapas-${target}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [ready, target])
 
   // Re-render every minute so the countdown stays true.
   const [now, setNow] = useState(() => Date.now())
@@ -60,6 +69,7 @@ export function Round() {
     <MatchTipCard
       key={f.id}
       fixture={f}
+      highlight={f.id === target}
       home={teams.data.byId.get(f.team_h)!}
       away={teams.data.byId.get(f.team_a)!}
       myTip={tips.data?.find((t) => t.fixture_id === f.id && t.user_id === userId)}

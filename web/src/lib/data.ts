@@ -92,17 +92,22 @@ export const useTipResults = () =>
     },
   })
 
-/** What a duel compares: result tips ('individual') or club tips ('club'). */
-export type DuelCategory = 'individual' | 'club'
+/** Round duels compare result tips ('individual') or club tips ('club', switched off for now); 'match' is one match. */
+export type DuelCategory = 'individual' | 'club' | 'match'
+/** H home win, D draw, A away win; the challenger may also take a double chance (HD, DA, HA). */
+export type DuelPick = 'H' | 'D' | 'A' | 'HD' | 'DA' | 'HA'
 
 export interface Duel {
   id: number
   category: DuelCategory
   gameweek_id: number
+  fixture_id: number | null
   challenger_id: string
   opponent_id: string
   stake: number
-  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'finished'
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'withdrawn' | 'finished'
+  opponent_pick: 'H' | 'D' | 'A' | null
+  challenger_pick: DuelPick | null
   challenger_iq: number | null
   opponent_iq: number | null
   challenger_delta: number | null
@@ -113,4 +118,23 @@ export const useDuels = () =>
   useQuery({
     queryKey: ['duels'],
     queryFn: async () => must(await supabase.from('duels').select('*').order('created_at')) as Duel[],
+  })
+
+/** Everyone's Rešpekt (the duel currency): balance and how much of it is riding on open duels. */
+export const useRespect = () =>
+  useQuery({
+    queryKey: ['duels', 'respect'],
+    queryFn: async () => {
+      const rows = must(await supabase.rpc('respect_board')) as { user_id: string; total: number; locked: number }[]
+      return new Map(rows.map((r) => [r.user_id, { total: r.total, locked: r.locked, free: r.total - r.locked }]))
+    },
+  })
+
+/** Matches not kicked off yet in the given rounds, for match duels. */
+export const useUpcomingFixtures = (gws: number[]) =>
+  useQuery({
+    queryKey: ['fixtures', 'upcoming', gws],
+    enabled: gws.length > 0,
+    queryFn: async () => must(await supabase.from('fixtures').select('*').in('gameweek_id', gws)
+      .gt('kickoff_time', new Date().toISOString()).order('kickoff_time')) as Fixture[],
   })

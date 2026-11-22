@@ -3,11 +3,14 @@ import { useState } from 'react'
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { MAX_LEVEL, TITLES } from '@shared/level.ts'
+import { DUELS_ENABLED } from '@/lib/features'
 
 const STEPS = [
   { title: 'Tipuj zápasy kola', text: 'Pri každom zápase tipni presný výsledok. Za správneho víťaza alebo remízu dostaneš 3 IQ, za presné skóre ďalšie 3 IQ, spolu 6. Tip 2:2 pri výsledku 0:0 teda dá 3 IQ. Tip môžeš meniť až do výkopu.' },
   { title: 'Vyber tri tipy pre svoj klub', text: 'V záložke Môj klub dostaneš ku každému zápasu šesť tipov, napríklad kto dá gól. Vyber si tri, body sú za tie, ktoré vyjdú.' },
-  { title: 'Zbieraj IQ a vyzývaj kamošov', text: 'Za IQ stúpaš v leveloch. V záložke Duely vyzveš kamoša: kto v kole naberie viac IQ, berie stávku.' },
+  DUELS_ENABLED
+    ? { title: 'Zbieraj IQ a vyzývaj kamošov', text: 'Za IQ stúpaš v leveloch. V záložke Duely vyzveš kamoša o Rešpekt: na celé kolo alebo na jeden zápas.' }
+    : { title: 'Zbieraj IQ', text: 'Za IQ stúpaš v leveloch a v tabuľkách sa porovnáš s kamošmi.' },
 ]
 
 /** The rules on one page: three steps first, details after. */
@@ -37,8 +40,12 @@ export function HowToPlay() {
         <p><b>Kedy sa tip zamkne:</b> každý zápas pri svojom výkope. Tipy ostatných uvidíš až potom.</p>
         <p><b>Kedy pribudnú body:</b> do pár minút po skončení zápasu. Počas zápasu sú predbežné.</p>
         <p><b>Klubové tipy:</b> šestica sa losuje na každé kolo a je rovnaká pre všetkých. Klub si vyberáš raz na celú sezónu.</p>
-        <p><b>Duely:</b> hráte buď o Zápasy, alebo o Klub. Stávka je 5, 10 alebo 20 IQ. Duel začne, len keď obaja máte v tej kategórii aspoň 10 voľného IQ, a nikto nesmie staviť viac, ako má voľného. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky.</p>
-        <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne, ani keď prehráš duel. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
+        {DUELS_ENABLED && <>
+        <p><b>Duely:</b> hrajú sa o Rešpekt (R), samostatnú menu, ktorá IQ ani level nemení. Každý začína so 100 R a za každé kolo, v ktorom natipuje všetky zápasy, dostane +5 R. Stávka je 5, 10 alebo 20 R a duel začne, len keď obaja máte aspoň 10 voľného R.</p>
+        <p><b>Duel o kolo:</b> kto v kole naberie viac IQ za tipy zápasov, berie stávku. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky. Duely o Môj klub pripravujeme.</p>
+        <p><b>Duel o zápas:</b> súper prijme so svojím tipom na zápas a ty uvidíš len jeho stranu (1, X alebo 2), nikdy presné skóre. Potom si vyberieš jednu zo zvyšných strán (výhra aj prehra je celá stávka; ak padne tretí výsledok, nikto nič nezíska), alebo dvojtip bez jeho strany, ktorý vyhrá len polovicu stávky, ale prehrá celú. Alebo duel odmietneš, no zaráta sa ti medzi 3 zápasové duely kola a na ten zápas už toho hráča nevyzveš. Súper po prijatí môže meniť skóre, ale nie víťaza.</p>
+        </>}
+        <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne, IQ sa počíta len z tipov. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
       </div>
       <div id="tabulka" className="scroll-mt-4 space-y-3 rounded-xl bg-white p-4 text-sm text-neutral-700 shadow-md">
         <h2 className="text-base font-semibold text-neutral-900">Čo je v tabuľke</h2>

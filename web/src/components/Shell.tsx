@@ -4,7 +4,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { PushPrompt } from '@/components/PushPrompt'
 import { type Profile, useDuels, useIqRows } from '@/lib/data'
 import { levelFor } from '@shared/level.ts'
-import { playerIq } from '@/lib/standings'
+import { DUELS_ENABLED } from '@/lib/features'
+import { iqSummary } from '@/lib/standings'
 
 const NAV = [
   { to: '/', label: 'Kolo', Icon: CalendarDays },
@@ -12,12 +13,12 @@ const NAV = [
   { to: '/tabulky', label: 'Tabuľky', Icon: ListOrdered },
   { to: '/duely', label: 'Duely', Icon: Swords },
   { to: '/profil', label: 'Profil', Icon: UserRound },
-]
+].filter((n) => DUELS_ENABLED || n.to !== '/duely')
 
 export function Shell({ profile }: { profile: Profile }) {
   const iq = useIqRows()
   const duels = useDuels()
-  const lv = iq.data && duels.data && levelFor(playerIq(iq.data.individual, iq.data.club, duels.data, profile.id).peak)
+  const lv = iq.data && levelFor(iqSummary(iq.data.individual, iq.data.club, profile.id).total)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const here = NAV.findIndex((n) => n.to === pathname)
@@ -31,7 +32,9 @@ export function Shell({ profile }: { profile: Profile }) {
     e.preventDefault()
     document.startViewTransition(() => flushSync(() => { navigate(to); window.scrollTo(0, 0) }))
   }
-  const challenged = duels.data?.some((d) => d.status === 'pending' && d.opponent_id === profile.id)
+  // A challenge to answer, or a match duel waiting for my side.
+  const challenged = DUELS_ENABLED && duels.data?.some((d) => (d.status === 'pending' && d.opponent_id === profile.id)
+    || (d.status === 'accepted' && d.category === 'match' && d.challenger_id === profile.id && !d.challenger_pick))
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
       <div className="scarf h-3" aria-hidden />

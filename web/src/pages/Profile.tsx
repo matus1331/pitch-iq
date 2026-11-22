@@ -5,7 +5,8 @@ import { CardsSkeleton } from '@/components/Skeleton'
 import { badgeUrl } from '@/lib/clubColors'
 import { type Profile as ProfileRow, type Team, useDuels, useIqRows } from '@/lib/data'
 import { levelFor, MAX_LEVEL, TITLES } from '@shared/level.ts'
-import { duelRecord, iqSummary, playerIq } from '@/lib/standings'
+import { duelRecord, iqSummary } from '@/lib/standings'
+import { DUELS_ENABLED } from '@/lib/features'
 import { supabase } from '@/lib/supabase'
 
 export function Profile({ profile, club }: { profile: ProfileRow; club: Team | undefined }) {
@@ -13,16 +14,12 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
   const duels = useDuels()
   if (!iq.data || !duels.data) return <CardsSkeleton count={4} />
   const s = iqSummary(iq.data.individual, iq.data.club, profile.id)
-  const { total, peak } = playerIq(iq.data.individual, iq.data.club, duels.data, profile.id)
+  const total = s.total
   const rec = duelRecord(duels.data, profile.id)
-  // The level comes from the peak; progress to the next one counts from the current IQ.
-  const lv = levelFor(peak)
-  const base = peak - lv.progress
-  const progress = Math.max(0, total - base)
+  // IQ comes from tips only, so it never drops and the level is simply the current IQ's.
+  const lv = levelFor(total)
+  const progress = lv.progress
   const pct = lv.needed ? Math.round((progress / lv.needed) * 100) : 100
-  const lastDuel = duels.data
-    .filter((d) => d.status === 'finished' && d.gameweek_id === s.lastRound && (d.challenger_id === profile.id || d.opponent_id === profile.id))
-    .reduce((n, d) => n + ((d.challenger_id === profile.id ? d.challenger_delta : d.opponent_delta) ?? 0), 0)
 
   return (
     <section className="space-y-4">
@@ -47,12 +44,9 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
         </div>
         <p className="mt-2 text-sm">
           {lv.needed
-            ? `${progress} / ${lv.needed} IQ · ešte ${lv.needed - (total - base)} IQ na level ${lv.level + 1}`
+            ? `${progress} / ${lv.needed} IQ · ešte ${lv.needed - progress} IQ na level ${lv.level + 1}`
             : 'Najvyšší level. Viac sa už nedá.'}
         </p>
-        {total < base && (
-          <p className="mt-1 text-sm text-neutral-500">Duel ti ubral IQ pod hranicu levelu, level si však držíš.</p>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -62,27 +56,29 @@ export function Profile({ profile, club }: { profile: ProfileRow; club: Team | u
         </div>
         <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
           <p className="text-sm text-neutral-500">{s.lastRound ? `Posledné kolo (${s.lastRound}.)` : 'Posledné kolo'}</p>
-          <p className="scoreboard text-4xl">{s.lastRoundIndividual + s.lastRoundClub + lastDuel}</p>
+          <p className="scoreboard text-4xl">{s.lastRoundIndividual + s.lastRoundClub}</p>
           {s.lastRound && (
             <p className="text-xs text-neutral-500">
-              zápasy {s.lastRoundIndividual} · klub {s.lastRoundClub}{lastDuel ? ` · duel ${lastDuel > 0 ? '+' : ''}${lastDuel}` : ''}
+              zápasy {s.lastRoundIndividual} · klub {s.lastRoundClub}
             </p>
           )}
         </div>
       </div>
 
-      <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
-        <h2 className="mb-2 font-semibold">Duely</h2>
-        {rec.won + rec.drawn + rec.lost === 0 ? (
-          <p className="text-sm text-neutral-600">Zatiaľ žiadny odohraný duel. Kamoša vyzveš v záložke Duely.</p>
-        ) : (
-          <dl className="grid grid-cols-3 gap-2 text-center">
-            <div><dt className="text-xs text-neutral-500">Bilancia V–R–P</dt><dd className="scoreboard text-2xl">{rec.won}–{rec.drawn}–{rec.lost}</dd></div>
-            <div><dt className="text-xs text-neutral-500">IQ z duelov</dt><dd className="scoreboard text-2xl">{rec.net > 0 ? '+' : ''}{rec.net}</dd></div>
-            <div><dt className="text-xs text-neutral-500">Najdlhšia séria</dt><dd className="scoreboard text-2xl">{rec.bestStreak}</dd></div>
-          </dl>
-        )}
-      </div>
+      {DUELS_ENABLED && (
+        <div className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
+          <h2 className="mb-2 font-semibold">Duely</h2>
+          {rec.won + rec.drawn + rec.lost === 0 ? (
+            <p className="text-sm text-neutral-600">Zatiaľ žiadny odohraný duel. Kamoša vyzveš v záložke Duely.</p>
+          ) : (
+            <dl className="grid grid-cols-3 gap-2 text-center">
+              <div><dt className="text-xs text-neutral-500">Bilancia V–R–P</dt><dd className="scoreboard text-2xl">{rec.won}–{rec.drawn}–{rec.lost}</dd></div>
+              <div><dt className="text-xs text-neutral-500">Rešpekt z duelov</dt><dd className="scoreboard text-2xl">{rec.net > 0 ? '+' : ''}{rec.net}</dd></div>
+              <div><dt className="text-xs text-neutral-500">Najdlhšia séria</dt><dd className="scoreboard text-2xl">{rec.bestStreak}</dd></div>
+            </dl>
+          )}
+        </div>
+      )}
 
       <PushToggle />
 

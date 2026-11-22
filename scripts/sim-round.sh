@@ -17,8 +17,9 @@ reset() {
        delete from player_match_stats where not kicked_off(fixture_id);
        update duels set status = 'accepted', challenger_iq = null, opponent_iq = null,
          challenger_delta = null, opponent_delta = null
-       where status = 'finished'
-         and exists (select 1 from fixtures f where f.gameweek_id = duels.gameweek_id and not f.finished);"
+       where status = 'finished' and (
+         (category <> 'match' and exists (select 1 from fixtures f where f.gameweek_id = duels.gameweek_id and not f.finished))
+         or (category = 'match' and not kicked_off(fixture_id)));"
 }
 
 case "${1:-start}" in

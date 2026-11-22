@@ -1,13 +1,16 @@
 begin;
-select plan(29);
+select plan(40);
 
--- Test-only data: a played round (9012) for the players' IQ and an open round (9013).
+-- Test-only data: an open round (9013) with two matches. Everyone starts with 100 Rešpekt.
 insert into teams (id, code, name, short_name) values (9001, 3, 'Arsenal', 'ARS'), (9009, 11, 'Everton', 'EVE')
   on conflict do nothing;
 insert into gameweeks (id) values (9012), (9013) on conflict do nothing;
-insert into fixtures (id, gameweek_id, kickoff_time, team_h, team_a, started) values
-  (9200, 9012, now() - interval '3 days', 9001, 9009, true),
-  (9201, 9013, now() + interval '3 days', 9001, 9009, false);
+insert into fixtures (id, gameweek_id, kickoff_time, team_h, team_a, started, finished) values
+  (9200, 9012, now() - interval '3 days', 9001, 9009, true, true),
+  (9201, 9013, now() + interval '3 days', 9001, 9009, false, false),
+  (9202, 9013, now() + interval '4 days', 9009, 9001, false, false),
+  (9203, 9013, now() + interval '5 days', 9001, 9009, false, false),
+  (9204, 9013, now() + interval '6 days', 9009, 9001, false, false);
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000a2', 'a2@test.local'),
   ('00000000-0000-0000-0000-0000000000b2', 'b2@test.local'),
@@ -20,77 +23,94 @@ insert into profiles (id, nickname) values
   ('00000000-0000-0000-0000-0000000000c2', 'pgtap_duel_c'),
   ('00000000-0000-0000-0000-0000000000d2', 'pgtap_duel_d'),
   ('00000000-0000-0000-0000-0000000000e2', 'pgtap_duel_e');
--- a has 25 IQ, b 25, c 10 (the duel minimum), d 9 (one short), e 10.
-insert into match_tips (user_id, fixture_id, kind, outcome, points) values
-  ('00000000-0000-0000-0000-0000000000a2', 9200, '1x2', 'H', 25),
-  ('00000000-0000-0000-0000-0000000000b2', 9200, '1x2', 'H', 25),
-  ('00000000-0000-0000-0000-0000000000c2', 9200, '1x2', 'H', 10),
-  ('00000000-0000-0000-0000-0000000000d2', 9200, '1x2', 'H', 9),
-  ('00000000-0000-0000-0000-0000000000e2', 9200, '1x2', 'H', 10);
+-- d lost a finished duel and is down to 9 Rešpekt, one short of the minimum.
+insert into duels (gameweek_id, challenger_id, opponent_id, stake, status, challenger_delta, opponent_delta) values
+  (9012, '00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000e2', 20, 'finished', -91, 0);
+-- b tipped 2:1 on match 9201 (home win).
+insert into match_tips (user_id, fixture_id, kind, home_goals, away_goals) values
+  ('00000000-0000-0000-0000-0000000000b2', 9201, 'exact', 2, 1);
 
 create temp table ids (name text primary key, id bigint);
 grant all on ids to authenticated;
 
+select is(respect_total('00000000-0000-0000-0000-0000000000a2'), 100, 'everyone_starts_with_100');
+select is(respect_total('00000000-0000-0000-0000-0000000000d2'), 9, 'duel_results_count_into_respect');
+
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
 
+-- Round duels
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 7, 'individual')$$, 'DUEL_STAKE_INVALID', 'stake_must_be_5_10_20');
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'club')$$, 'DUEL_CATEGORY_INVALID', 'club_duels_are_switched_off');
 select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000a2', 5, 'individual')$$, 'DUEL_INVALID_OPPONENT', 'cannot_challenge_self');
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000d2', 5, 'individual')$$, 'DUEL_OPPONENT_NO_R', 'opponent_needs_10_respect');
 insert into ids select 'ab', id from challenge_duel('00000000-0000-0000-0000-0000000000b2', 10, 'individual');
 select is((select status from duels where id = (select id from ids where name = 'ab')), 'pending', 'challenge_creates_pending');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'individual')$$, 'DUEL_EXISTS', 'one_duel_per_pair');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'club')$$, 'DUEL_EXISTS', 'one_duel_per_pair_across_categories');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'club')$$, 'DUEL_NOT_ENOUGH_IQ', 'club_duel_needs_club_iq');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000c2', 20, 'individual')$$, 'DUEL_STAKE_TOO_HIGH', 'open_stakes_cannot_exceed_iq');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000d2', 5, 'individual')$$, 'DUEL_OPPONENT_NO_IQ', 'cannot_challenge_player_without_iq');
-insert into ids select 'ac', id from challenge_duel('00000000-0000-0000-0000-0000000000c2', 10, 'individual');
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual')$$, 'DUEL_LIMIT', 'two_open_duels_per_round');
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'individual')$$, 'DUEL_EXISTS', 'one_round_duel_per_pair');
+select is((select total - locked from respect_board() where user_id = auth.uid()), 90, 'own_challenge_locks_the_stake');
 select throws_ok($$insert into duels (gameweek_id, challenger_id, opponent_id, stake) values (9013, auth.uid(), '00000000-0000-0000-0000-0000000000d2', 5)$$,
   '42501', null, 'direct_insert_forbidden');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000d2","role":"authenticated"}';
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual')$$, 'DUEL_NOT_ENOUGH_IQ', 'nine_iq_is_below_duel_minimum');
-set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000e2","role":"authenticated"}';
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000d2', 5, 'individual')$$, 'DUEL_OPPONENT_NO_IQ', 'opponent_needs_duel_minimum');
-set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000d2","role":"authenticated"}';
-select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000b2', 5, 'individual')$$, 'DUEL_NOT_ENOUGH_IQ', 'locked_below_minimum_iq');
+select throws_ok($$select challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual')$$, 'DUEL_NOT_ENOUGH_R', 'nine_respect_is_below_minimum');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
--- c's unanswered challenge from a does not tie up c's IQ, so b can still challenge c.
-insert into ids select 'bc', id from challenge_duel('00000000-0000-0000-0000-0000000000c2', 5, 'individual');
+select is((select status from respond_duel((select id from ids where name = 'ab'), true)), 'accepted', 'opponent_accepts_round_duel');
+select throws_ok($$select respond_duel((select id from ids where name = 'ab'), true)$$, 'DUEL_NOT_PENDING', 'cannot_answer_twice');
+
+-- Match duels: a challenges b on 9201; b accepts with his 2:1, so b's side is H.
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9200, 10)$$, 'DUEL_FIXTURE_INVALID', 'no_duel_on_started_match');
+insert into ids select 'm1', id from challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 10);
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 5)$$, 'DUEL_EXISTS', 'one_duel_per_pair_and_match');
+select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'A')$$, 'DUEL_NOT_PICKABLE', 'no_pick_before_accept');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
-select throws_ok($$select respond_duel((select id from ids where name = 'ab'), true)$$, 'DUEL_NOT_YOURS', 'only_opponent_responds');
-select is((select status from respond_duel((select id from ids where name = 'bc'), true)), 'accepted', 'opponent_accepts');
-select throws_ok($$select respond_duel((select id from ids where name = 'ac'), true)$$, 'DUEL_STAKE_TOO_HIGH', 'accepting_needs_free_iq');
-select is((select status from respond_duel((select id from ids where name = 'ac'), false)), 'declined', 'opponent_declines');
+select is((select count(*)::int from duels where category = 'match'), 0, 'match_duel_hidden_from_others_before_kickoff');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
-select is((select status from respond_duel((select id from ids where name = 'ab'), true)), 'accepted', 'accept_second_duel');
-select throws_ok($$select respond_duel((select id from ids where name = 'ab'), true)$$, 'DUEL_NOT_PENDING', 'cannot_answer_twice');
-select throws_ok($$select cancel_duel((select id from ids where name = 'ab'))$$, 'DUEL_NOT_YOURS', 'only_challenger_cancels');
+select is((select opponent_pick from respond_duel((select id from ids where name = 'm1'), true)), 'H', 'accept_takes_side_from_tip');
+select lives_ok($$update match_tips set home_goals = 3, away_goals = 0 where fixture_id = 9201 and user_id = auth.uid()$$, 'score_may_change_within_side');
+select throws_ok($$update match_tips set home_goals = 1, away_goals = 1 where fixture_id = 9201 and user_id = auth.uid()$$, 'TIP_DUEL_LOCKED', 'side_is_locked');
+select throws_ok($$delete from match_tips where fixture_id = 9201 and user_id = auth.uid()$$, 'TIP_DUEL_LOCKED', 'tip_cannot_be_deleted');
+select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'D')$$, 'DUEL_NOT_YOURS', 'only_challenger_picks');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
-select throws_ok($$select cancel_duel((select id from ids where name = 'ab'))$$, 'DUEL_NOT_PENDING', 'cannot_cancel_accepted');
-insert into ids select 'ae', id from challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual');
-select is((select status from cancel_duel((select id from ids where name = 'ae'))), 'cancelled', 'challenger_cancels_pending');
-insert into ids select 'ae2', id from challenge_duel('00000000-0000-0000-0000-0000000000e2', 5, 'individual');
-reset role;
-update fixtures set started = true where gameweek_id = (select gameweek_id from duels where id = (select id from ids where name = 'ae2'));
-set local role authenticated;
-set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000e2","role":"authenticated"}';
-select throws_ok($$select respond_duel((select id from ids where name = 'ae2'), false)$$, 'DUEL_CLOSED', 'no_answer_after_round_starts');
-select is((select count(*)::int from duels where challenger_id = '00000000-0000-0000-0000-0000000000a2'), 4, 'duels_readable_by_everyone');
+select is((select opponent_pick from duels where id = (select id from ids where name = 'm1')), 'H', 'challenger_sees_side');
+select is((select home_goals from match_tips where fixture_id = 9201 and user_id = '00000000-0000-0000-0000-0000000000b2'), null, 'challenger_does_not_see_score');
+select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'H')$$, 'DUEL_PICK_INVALID', 'cannot_pick_opponents_side');
+select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'HD')$$, 'DUEL_PICK_INVALID', 'double_cannot_cover_opponents_side');
+select is((select challenger_pick from pick_duel((select id from ids where name = 'm1'), 'DA')), 'DA', 'challenger_picks_double');
+select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'A')$$, 'DUEL_NOT_PICKABLE', 'pick_once');
+
+-- b needs a tip to accept; then a withdraws, which still uses up one of a's three match duels.
+insert into ids select 'm2', id from challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9202, 5);
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+select throws_ok($$select respond_duel((select id from ids where name = 'm2'), true)$$, 'DUEL_NEEDS_TIP', 'accept_needs_a_tip');
+insert into match_tips (user_id, fixture_id, kind, home_goals, away_goals) values (auth.uid(), 9202, 'exact', 0, 0);
+select is((select opponent_pick from respond_duel((select id from ids where name = 'm2'), true)), 'D', 'draw_tip_is_side_d');
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
+select is((select status from cancel_duel((select id from ids where name = 'm2'))), 'withdrawn', 'challenger_withdraws_after_seeing_side');
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9202, 5)$$, 'DUEL_EXISTS', 'no_new_duel_on_same_match_after_withdrawal');
+insert into ids select 'm3', id from challenge_match_duel('00000000-0000-0000-0000-0000000000c2', 9203, 5);
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000e2', 9204, 5)$$, 'DUEL_MATCH_LIMIT', 'withdrawal_counts_toward_three');
+select is((select status from cancel_duel((select id from ids where name = 'm3'))), 'cancelled', 'unanswered_challenge_can_be_cancelled');
+insert into ids select 'm4', id from challenge_match_duel('00000000-0000-0000-0000-0000000000e2', 9204, 5);
+select is((select status from duels where id = (select id from ids where name = 'm4')), 'pending', 'cancelled_challenge_frees_the_slot');
+
+select is((select locked from respect_board() where user_id = '00000000-0000-0000-0000-0000000000a2'), 25, 'board_shows_locked_respect');
 
 -- An account without a profile (signed up, never entered the invite code) sees nobody's data.
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000f2","role":"authenticated"}';
-select is((select count(*)::int from profiles), 0, 'non_member_sees_no_profiles');
 select is((select count(*)::int from duels), 0, 'non_member_sees_no_duels');
-select is((select count(*)::int from match_tips), 0, 'non_member_sees_no_tips');
+select is((select count(*)::int from respect_board()), 0, 'non_member_sees_no_respect');
+select throws_ok($$select respect_free('00000000-0000-0000-0000-0000000000b2')$$, '42501', null, 'respect_free_not_callable_by_clients');
 
--- Helpers are not callable by clients, so nobody can read another player's IQ with them.
-select throws_ok($$select iq_in('00000000-0000-0000-0000-0000000000b2', 'individual')$$, '42501', null, 'iq_in_not_callable_by_clients');
-select throws_ok($$select duel_free_iq('00000000-0000-0000-0000-0000000000b2', 'individual')$$, '42501', null, 'duel_free_iq_not_callable_by_clients');
+reset role;
+update fixtures set kickoff_time = now() - interval '1 minute', started = true where id = 9201;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
+select is((select count(*)::int from duels where fixture_id = 9201), 1, 'match_duel_public_after_kickoff');
 
 select * from finish();
 rollback;

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { matchDuelDeltas, sideOf } from '../_shared/duel.ts'
 import { iqTotals, levelFor } from '../_shared/level.ts'
 import { drawOffer } from '../_shared/rotation.ts'
 import { type PlayerStats, scoreClubTip, scoreMatchTip } from '../_shared/scoring.ts'
@@ -194,43 +195,62 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
   return { fixtures: fixtures.length, scored }
 }
 
-// 7. duels: unanswered challenges expire when their round starts; accepted ones settle once the round is over.
+// 7. duels. Round duels: unanswered challenges expire when their round starts, accepted ones settle once
+//    the round is over. Match duels: the same per match, plus an accepted duel the challenger never picked
+//    a side for is withdrawn at kickoff, and a postponed match voids its duels. Results are Rešpekt, not IQ.
 async function settleDuels(db: SupabaseClient, fixtures: FixtureRow[]) {
   const started = new Set(fixtures.filter((f) => f.started).map((f) => f.gameweek_id))
   const over = new Set(fixtures.filter((f) => f.gameweek_id != null).map((f) => f.gameweek_id))
   for (const f of fixtures) if (f.gameweek_id != null && !f.finished) over.delete(f.gameweek_id)
+  const byId = new Map(fixtures.map((f) => [f.id, f]))
+  const postponed = (f: FixtureRow | undefined) => !f || f.kickoff_time == null || f.gameweek_id == null
 
   const open: Json[] = must(await db.from('duels').select('*').in('status', ['pending', 'accepted']))
-  const expired = open.filter((d) => d.status === 'pending' && started.has(d.gameweek_id)).map((d) => d.id)
-  if (expired.length) must(await db.from('duels').update({ status: 'expired' }).in('id', expired))
-  const due = open.filter((d) => d.status === 'accepted' && over.has(d.gameweek_id)).sort((a, b) => a.gameweek_id - b.gameweek_id)
-  if (!due.length) return
+  const matchDuels = open.filter((d) => d.category === 'match')
+  const roundDuels = open.filter((d) => d.category !== 'match')
+  const setStatus = async (status: string, ids: number[]) => {
+    if (ids.length) must(await db.from('duels').update({ status }).in('id', ids))
+  }
 
+  await setStatus('cancelled', matchDuels.filter((d) => postponed(byId.get(d.fixture_id))).map((d) => d.id))
+  const live = matchDuels.filter((d) => !postponed(byId.get(d.fixture_id)))
+  await setStatus('expired', [
+    ...roundDuels.filter((d) => d.status === 'pending' && started.has(d.gameweek_id)),
+    ...live.filter((d) => d.status === 'pending' && byId.get(d.fixture_id)!.started),
+  ].map((d) => d.id))
+  await setStatus('withdrawn', live.filter((d) => d.status === 'accepted' && d.challenger_pick == null && byId.get(d.fixture_id)!.started).map((d) => d.id))
+
+  for (const d of live.filter((d) => d.status === 'accepted' && d.challenger_pick != null)) {
+    const f = byId.get(d.fixture_id)!
+    if (!f.finished || f.team_h_score == null || f.team_a_score == null) continue
+    const r = matchDuelDeltas(d.stake, d.challenger_pick, d.opponent_pick, sideOf(f.team_h_score, f.team_a_score))
+    must(await db.from('duels').update({ status: 'finished', challenger_delta: r.challenger, opponent_delta: r.opponent })
+      .eq('id', d.id).eq('status', 'accepted'))
+  }
+
+  const due = roundDuels.filter((d) => d.status === 'accepted' && over.has(d.gameweek_id))
+  if (!due.length) return
   const users = [...new Set(due.flatMap((d) => [d.challenger_id, d.opponent_id]))]
   const tag = (category: string) => (rows: Json[]) => rows.map((r) => ({ ...r, category }))
   const tips: Json[] = [
     ...tag('individual')(must(await db.from('leaderboard_individual').select('user_id, gameweek_id, points').in('user_id', users))),
     ...tag('club')(must(await db.from('leaderboard_club').select('user_id, gameweek_id, points').in('user_id', users))),
   ]
-  const settled: Json[] = must(await db.from('duels').select('*').eq('status', 'finished'))
-  const steps = (user: string, before: number) => iqTotals(
-    tips.filter((t) => t.user_id === user && t.gameweek_id < before),
-    settled.filter((d) => d.gameweek_id < before && (d.challenger_id === user || d.opponent_id === user))
-      .map((d) => ({ gameweek_id: d.gameweek_id, points: d.challenger_id === user ? d.challenger_delta : d.opponent_delta })),
-  )
+  // Levels come from tips only (IQ before the duel's round).
+  const levelBefore = (user: string, before: number) =>
+    levelFor(iqTotals(tips.filter((t) => t.user_id === user && t.gameweek_id < before), []).peak).level
   // A duel compares only the IQ of its own category (result tips or club tips) in its round.
   const roundIq = (user: string, gw: number, category: string) =>
     tips.filter((t) => t.user_id === user && t.gameweek_id === gw && t.category === category).reduce((n, t) => n + t.points, 0)
 
   for (const d of due) {
     const c = roundIq(d.challenger_id, d.gameweek_id, d.category), o = roundIq(d.opponent_id, d.gameweek_id, d.category)
-    const levelBefore = (u: string) => levelFor(steps(u, d.gameweek_id).peak).level
     // The winner takes the stake; an underdog winner (lower level before the round) gets half again on top.
-    const win = (winner: string, loser: string) => d.stake + (levelBefore(winner) < levelBefore(loser) ? Math.floor(d.stake / 2) : 0)
+    const win = (winner: string, loser: string) =>
+      d.stake + (levelBefore(winner, d.gameweek_id) < levelBefore(loser, d.gameweek_id) ? Math.floor(d.stake / 2) : 0)
     const challenger_delta = c > o ? win(d.challenger_id, d.opponent_id) : c < o ? -d.stake : 0
     const opponent_delta = o > c ? win(d.opponent_id, d.challenger_id) : o < c ? -d.stake : 0
     const row = { status: 'finished', challenger_iq: c, opponent_iq: o, challenger_delta, opponent_delta }
     must(await db.from('duels').update(row).eq('id', d.id).eq('status', 'accepted'))
-    settled.push({ ...d, ...row })
   }
 }

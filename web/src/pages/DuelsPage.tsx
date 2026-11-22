@@ -1,7 +1,7 @@
-import { ChallengeButton, DuelPanel, MIN_DUEL_IQ, useDuelRound, useDuelStanding } from '@/components/Duels'
+import { ChallengeButton, DuelPanel, MATCH_DUELS_PER_ROUND, MIN_DUEL_R, useDuelRound, useDuelStanding } from '@/components/Duels'
 import { CardsSkeleton } from '@/components/Skeleton'
 import { useProfiles, useSession } from '@/lib/data'
-import { DUEL_CATEGORIES, duelRecord, rankRows } from '@/lib/standings'
+import { duelRecord, rankRows } from '@/lib/standings'
 
 /** Duely tab: my duels, the IQ I can bet, and everyone I can challenge. */
 export function DuelsPage() {
@@ -15,38 +15,14 @@ export function DuelsPage() {
     <section>
       <h1 className="font-heading mb-1 text-4xl leading-none">Duely</h1>
       <p className="mb-4">
-        Vyzvi kamoša o 5, 10 alebo 20 IQ. Hráte o Zápasy alebo o Klub: kto v kole naberie v tej kategórii viac IQ, berie stávku.
+        Vyzvi kamoša o 5, 10 alebo 20 Rešpektu (R): na celé kolo (kto naberie viac IQ za tipy zápasov) alebo na jeden zápas.
+        Duely sa hrajú len o Rešpekt, tvoje IQ a level nemenia.
       </p>
       {!s || !profiles.data || !session ? <CardsSkeleton /> : (
         <>
           <DuelPanel userId={userId} />
 
-          <div className="mb-4 rounded-xl bg-white p-4 text-neutral-900 shadow-md">
-            <h2 className="font-semibold">Tvoje IQ na duely</h2>
-            <table className="mt-2 w-full text-sm">
-              <thead className="text-xs text-neutral-500">
-                <tr><th className="text-left font-normal">Kategória</th><th className="text-right font-normal">IQ</th>
-                  <th className="text-right font-normal">V dueloch</th><th className="text-right font-normal">Voľné</th></tr>
-              </thead>
-              <tbody>
-                {DUEL_CATEGORIES.map((c) => {
-                  const x = s.cat(userId, c.id)
-                  return (
-                    <tr key={c.id} className="border-t border-neutral-100">
-                      <td className="py-1.5">{c.label}</td>
-                      <td className="scoreboard text-right">{x.iq}</td>
-                      <td className="scoreboard text-right">{x.locked}</td>
-                      <td className={`scoreboard text-right ${x.free >= MIN_DUEL_IQ ? 'text-green-800' : 'text-red-700'}`}>{Math.max(0, x.free)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-              Stávky prijatých duelov a tvojich odoslaných výziev sú v dueloch, kým sa duel nevyhodnotí. Duel v kategórii začneš,
-              keď v nej ty aj súper máte aspoň {MIN_DUEL_IQ} voľného IQ. S jedným hráčom môžeš mať v kole len jeden duel.
-            </p>
-          </div>
+          <RespectCard s={s} userId={userId} round={round.data ?? null} />
 
           <h2 className="font-heading mb-2 text-2xl">Hráči</h2>
           <PlayerList s={s} userId={userId} round={round.data ?? null} players={profiles.data} />
@@ -60,11 +36,9 @@ function PlayerList({ s, userId, round, players }: {
   s: NonNullable<ReturnType<typeof useDuelStanding>>; userId: string; round: number | null
   players: { id: string; nickname: string; club_team_id: number | null }[]
 }) {
-  const ranked = rankRows(players.map((p) => ({ user_id: p.id, nickname: p.nickname, points: s.total(p.id) })))
-  const nobody = ranked.every((r) => r.points === 0)
+  const ranked = rankRows(players.map((p) => ({ user_id: p.id, nickname: p.nickname, points: s.respect(p.id).total })))
   return (
     <ol className="overflow-hidden rounded-xl bg-white text-neutral-900 shadow-md">
-      {nobody && <li className="border-b border-neutral-100 px-4 py-3 text-sm text-neutral-600">Zatiaľ nikto nemá IQ. Duely sa odomknú po prvých bodoch.</li>}
       {ranked.map((r) => {
         const me = r.user_id === userId
         const rec = duelRecord(s.duels, r.user_id)
@@ -78,10 +52,33 @@ function PlayerList({ s, userId, round, players }: {
               </span>
             </span>
             {!me && <ChallengeButton opponent={p} userId={userId} round={round} />}
-            <span className="w-12 text-right"><span className="scoreboard text-2xl">{r.points}</span> <span className="text-xs text-neutral-500">IQ</span></span>
+            <span className="w-14 text-right"><span className="scoreboard text-2xl">{r.points}</span> <span className="text-xs text-neutral-500">R</span></span>
           </li>
         )
       })}
     </ol>
+  )
+}
+
+function RespectCard({ s, userId, round }: { s: NonNullable<ReturnType<typeof useDuelStanding>>; userId: string; round: number | null }) {
+  const r = s.respect(userId)
+  return (
+    <div className="mb-4 rounded-xl bg-white p-4 text-neutral-900 shadow-md">
+      <h2 className="font-semibold">Tvoj Rešpekt</h2>
+      <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+        <div><dt className="text-xs text-neutral-500">Spolu</dt><dd className="scoreboard text-2xl">{r.total}</dd></div>
+        <div><dt className="text-xs text-neutral-500">V dueloch</dt><dd className="scoreboard text-2xl">{r.locked}</dd></div>
+        <div><dt className="text-xs text-neutral-500">Voľné</dt>
+          <dd className={`scoreboard text-2xl ${r.free >= MIN_DUEL_R ? 'text-green-800' : 'text-red-700'}`}>{Math.max(0, r.free)}</dd></div>
+      </dl>
+      {round != null && (
+        <p className="mt-2 text-sm">Zápasové duely v {round}. kole: {s.matchDuels(userId, round)} z {MATCH_DUELS_PER_ROUND}</p>
+      )}
+      <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+        Každý začína so 100 R a za každé kolo, v ktorom natipuješ všetky zápasy, dostaneš +5 R. Duel začneš, keď ty aj súper
+        máte aspoň {MIN_DUEL_R} voľného R. Stávky prijatých duelov a tvojich odoslaných výziev sú v dueloch, kým sa duel nevyhodnotí.
+        V kole môžeš mať 2 duely o celé kolo (s jedným hráčom jeden) a {MATCH_DUELS_PER_ROUND} zápasové duely.
+      </p>
+    </div>
   )
 }
