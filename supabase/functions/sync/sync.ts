@@ -1,7 +1,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { matchDuelDeltas, sideOf } from '../_shared/duel.ts'
 import { iqTotals, levelFor } from '../_shared/level.ts'
-import { drawOffer } from '../_shared/rotation.ts'
+import { eligibleKeys } from '../_shared/rotation.ts'
 import { type PlayerStats, scoreClubTip, scoreMatchTip } from '../_shared/scoring.ts'
 
 // deno-lint-ignore no-explicit-any
@@ -109,26 +109,19 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
     if (rows.length) must(await db.from('player_match_stats').upsert(rows))
   }
 
-  // 4. draw offers for upcoming matches of owned clubs: one six per round, shared by every club,
-  //    and different from the previous round's six.
+  // 4. create offers for upcoming matches of owned clubs: every eligible tip.
   const owned = new Set<number>(
     must(await db.from('profiles').select('club_team_id').not('club_team_id', 'is', null)).map((p: Json) => p.club_team_id),
   )
-  const existingOffers: Json[] = must(await db.from('club_tip_offers').select('fixture_id, team_id, tip_keys'))
+  const existingOffers: Json[] = must(await db.from('club_tip_offers').select('fixture_id, team_id'))
   const hasOffer = new Set(existingOffers.map((o) => `${o.fixture_id}:${o.team_id}`))
-  const roundKeys = new Map<number, string[]>()
-  for (const o of existingOffers) {
-    const gw = byId.get(o.fixture_id)?.gameweek_id
-    if (gw != null && !roundKeys.has(gw)) roundKeys.set(gw, o.tip_keys)
-  }
   for (const gw of [current, current + 1]) {
     const roundFixtures = fixtures.filter((f) => f.gameweek_id === gw && f.kickoff_time && !f.started)
     const missing = roundFixtures.flatMap((f) => [f.team_h, f.team_a].filter((t) => owned.has(t) && !hasOffer.has(`${f.id}:${t}`)).map((t) => [f.id, t] as const))
     if (!missing.length) continue
     // Double-gameweek-safe keys for the whole round as soon as any club plays twice in it.
     const double = fixtures.some((f) => f.gameweek_id === gw && (f.is_double_gw_h || f.is_double_gw_a))
-    if (!roundKeys.has(gw)) roundKeys.set(gw, drawOffer(roundKeys.get(gw - 1) ?? [], double, Math.random))
-    must(await db.from('club_tip_offers').insert(missing.map(([fixture_id, team_id]) => ({ fixture_id, team_id, tip_keys: roundKeys.get(gw)! }))))
+    must(await db.from('club_tip_offers').insert(missing.map(([fixture_id, team_id]) => ({ fixture_id, team_id, tip_keys: eligibleKeys(double) }))))
     for (const [f, t] of missing) hasOffer.add(`${f}:${t}`)
   }
 
