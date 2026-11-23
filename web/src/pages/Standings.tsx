@@ -8,7 +8,7 @@ import { rankRows, type TipStats, tipStats, totals } from '@/lib/standings'
 type Board = 'individual' | 'club'
 const BOARDS: { id: Board; label: string; about: string }[] = [
   { id: 'individual', label: 'Zápasy', about: 'IQ za tipy na výsledky zápasov.' },
-  { id: 'club', label: 'Klub', about: 'IQ za tipy na zápasy vlastného klubu.' },
+  { id: 'club', label: 'Klub', about: 'IQ za zostavu a tipy na zápasy vlastného klubu.' },
 ]
 
 export function Standings() {
