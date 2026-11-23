@@ -68,23 +68,26 @@ function must<T>(r: { data: T | null; error: unknown }): T {
   return (r.data ?? []) as T
 }
 
-/** Users whose latest saved lineup (the one of the latest-kickoff fixture) has a flagged player. */
-async function injuredLineups(db: SupabaseClient, users: string[]): Promise<Set<string>> {
-  if (!users.length) return new Set()
-  const rows = must(await db.from('club_lineups').select('user_id, fixture_id, player_id, fixtures(kickoff_time)').in('user_id', users)) as unknown as
-    { user_id: string; fixture_id: number; player_id: number; fixtures: { kickoff_time: string | null } | null }[]
-  const latest = new Map<string, { fixture: number; kickoff: number }>()
-  for (const r of rows) {
-    const kickoff = Date.parse(r.fixtures?.kickoff_time ?? '') || 0
-    const cur = latest.get(r.user_id)
-    if (!cur || kickoff > cur.kickoff) latest.set(r.user_id, { fixture: r.fixture_id, kickoff })
+const FLAGGED = new Set(['i', 's', 'u', 'n', 'd'])
+
+/** Users whose latest saved lineup (greatest kickoff, ties by fixture id) has a flagged player. */
+async function injuredLineups(db: SupabaseClient, users: string[], fixtures: NotifyFixture[]): Promise<Set<string>> {
+  const kickoff = new Map(fixtures.map((f) => [f.id, Date.parse(f.kickoff_time ?? '') || 0]))
+  const out = new Set<string>()
+  // One query per user keeps each under PostgREST's 1000-row cap (a season is ~190 rows per user).
+  for (const u of users) {
+    const rows = must(await db.from('club_lineups').select('fixture_id, player_id').eq('user_id', u)) as { fixture_id: number; player_id: number }[]
+    let latest = -1
+    for (const r of rows) {
+      const k = kickoff.get(r.fixture_id) ?? 0, c = kickoff.get(latest) ?? 0
+      if (latest < 0 || k > c || (k === c && r.fixture_id > latest)) latest = r.fixture_id
+    }
+    const ids = rows.filter((r) => r.fixture_id === latest).map((r) => r.player_id)
+    if (!ids.length) continue
+    const players = must(await db.from('players').select('status').in('id', ids)) as { status: string | null }[]
+    if (players.some((p) => p.status && FLAGGED.has(p.status))) out.add(u)
   }
-  const last = rows.filter((r) => latest.get(r.user_id)!.fixture === r.fixture_id)
-  const players: { id: number; status: string | null }[] = last.length
-    ? must(await db.from('players').select('id, status').in('id', [...new Set(last.map((r) => r.player_id))]))
-    : []
-  const flagged = new Set(players.filter((p) => p.status && 'isund'.includes(p.status)).map((p) => p.id))
-  return new Set(last.filter((r) => flagged.has(r.player_id)).map((r) => r.user_id))
+  return out
 }
 
 /** Sends due round notifications. No-op without VAPID keys (local dev, tests). */
@@ -106,10 +109,14 @@ export async function runNotify(db: SupabaseClient): Promise<{ sent: number }> {
     ? must(await db.from('match_tips').select('user_id, fixture_id').in('fixture_id', ids))
     : []
   const users = [...new Set(subs.map((s) => s.user_id))]
-  const lineupAlerts = await injuredLineups(db, users)
+  // Only look at lineups when some reminder is actually due.
+  const now = Date.now()
+  const lineupAlerts = dueNotices(fixtures, tips, users, sent, now).some((n) => n.kind === 'reminder')
+    ? await injuredLineups(db, users, fixtures)
+    : new Set<string>()
 
   let count = 0
-  for (const n of dueNotices(fixtures, tips, users, sent, Date.now(), lineupAlerts)) {
+  for (const n of dueNotices(fixtures, tips, users, sent, now, lineupAlerts)) {
     // Claim first: a parallel sync run must not send the same notification twice.
     // ponytail: no retry, a device whose push service is down at that moment misses this one.
     const claimed = must(await db.from('notifications_sent')
