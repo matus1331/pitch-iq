@@ -344,7 +344,7 @@ Deno.test('carries a lineup over to a match first seen already finished', async 
   // No sync ran while 1002 was live: it shows up finished.
   await runSync(db, api([first, fixture(1002, { finished: true })]))
   const rows = await lineupRows(1002)
-  assertEquals(rows.map((r) => r.slot), ['flex', 'def', 'fwd', 'gk', 'mid'].sort())
+  assertEquals(rows.map((r) => r.slot), ['def', 'flex', 'fwd', 'gk', 'mid'])
   assertEquals(rows.every((r) => r.points != null && r.is_final), true)
 })
 
