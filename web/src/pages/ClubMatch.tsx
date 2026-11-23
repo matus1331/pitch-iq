@@ -173,14 +173,15 @@ function OpenMatch({ lineup, suggestion, players, offer, mine, version, onPick, 
   onSaveTip: (key: string, v: { player_id: number | null; value: number | null }) => Promise<void>
   onRemoveTip: (key: string) => Promise<void>
 }) {
-  const [step, setStep] = useState<Step>(lineup.length > 0 ? 3 : 1)
+  const started = lineup.length > 0 || mine.length > 0 // tips placed before the lineup step existed still count
+  const [step, setStep] = useState<Step>(started ? 3 : 1)
   const byId = new Map(players.map((p) => [p.id, p]))
   return (
     <div className="space-y-3">
       <nav aria-label="Kroky" className="grid grid-cols-3 gap-2">
         {STEPS.map((s) => (
           <button key={s.step} type="button" aria-current={step === s.step ? 'step' : undefined}
-            disabled={s.step > 1 && lineup.length === 0} onClick={() => setStep(s.step)}
+            disabled={s.step > 1 && !started} onClick={() => setStep(s.step)}
             className={`rounded-lg px-2 py-2 font-semibold disabled:opacity-50 ${step === s.step ? 'bg-white text-neutral-900' : 'bg-black/25'}`}>
             {s.label}
           </button>
@@ -189,7 +190,7 @@ function OpenMatch({ lineup, suggestion, players, offer, mine, version, onPick, 
 
       {step === 1 && (
         <LineupStep saved={lineup} suggestion={suggestion} players={players}
-          onPick={onPick} onSaveAll={onSaveAll} onNext={() => setStep(2)} />
+          onPick={onPick} onSaveAll={onSaveAll} onNext={() => setStep(2)} canContinue={started} />
       )}
 
       {step === 2 && (offer ? (

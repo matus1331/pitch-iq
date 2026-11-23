@@ -21,13 +21,15 @@ const SLOT = Object.fromEntries(SLOTS.map((s) => [s.slot, s]))
  * Step 1: five slots on a pitch, a tap opens the club's players for that slot.
  * Without a saved lineup the last one is offered (`suggestion`); any pick then saves the whole lineup.
  */
-export function LineupStep({ saved, suggestion, players, onPick, onSaveAll, onNext }: {
+export function LineupStep({ saved, suggestion, players, onPick, onSaveAll, onNext, canContinue }: {
   saved: Pick[]
   suggestion: Pick[] | null
   players: LineupPlayer[]
   onPick: (slot: Slot, playerId: number | null) => Promise<void>
   onSaveAll: (picks: Pick[]) => Promise<void>
   onNext: () => void
+  /** Tips already placed on this match also open the next steps. */
+  canContinue?: boolean
 }) {
   const [open, setOpen] = useState<Slot | null>(null)
   const draft = saved.length === 0 && suggestion?.length ? suggestion : null
@@ -74,8 +76,8 @@ export function LineupStep({ saved, suggestion, players, onPick, onSaveAll, onNe
         <PlayerList slot={open} picks={picks} players={players}
           onChoose={(id) => choose(open, id)} onClose={() => setOpen(null)} />
       )}
-      <Button className="w-full" disabled={saved.length === 0} onClick={onNext}>
-        {saved.length === 0 ? 'Najprv ulož aspoň jedného hráča' : 'Ďalej: tipy'}
+      <Button className="w-full" disabled={saved.length === 0 && !canContinue} onClick={onNext}>
+        {saved.length === 0 && !canContinue ? 'Najprv ulož aspoň jedného hráča' : 'Ďalej: tipy'}
       </Button>
     </div>
   )
