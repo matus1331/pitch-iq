@@ -28,3 +28,14 @@ Deno.test('results once every match of the round is finished', () => {
   assertEquals(out[0].messages.get('a')!.url, '/tabulky')
   assertEquals(dueNotices([fx(1, 11, -30)], [], ['a'], new Set(['11:results']), now), [])
 })
+
+Deno.test('reminder warns about an injured lineup player', () => {
+  const fixtures = [fx(1, 12, 20), fx(2, 12, 30)]
+  const tips = [{ user_id: 'a', fixture_id: 1 }, { user_id: 'a', fixture_id: 2 }]
+  const m = dueNotices(fixtures, tips, ['a', 'b', 'c'], new Set(), now, new Set(['a', 'b']))[0].messages
+  assertEquals(m.get('a')!.body, 'V zostave máš zraneného hráča.')
+  assertEquals(m.get('a')!.url, '/klub')
+  assertEquals(m.get('b')!.body, 'Ešte nemáš natipované 2 zápasy. V zostave máš zraneného hráča.')
+  assertEquals(m.get('b')!.url, '/')
+  assertEquals(m.get('c')!.body, 'Ešte nemáš natipované 2 zápasy.')
+})
