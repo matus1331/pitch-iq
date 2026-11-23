@@ -8,6 +8,8 @@ sql() { docker exec -i supabase_db_pl-expert psql -U postgres -tAq -c "$1"; }
 sync() { curl -sf -X POST -H "Authorization: Bearer local-sync-secret" http://127.0.0.1:54321/functions/v1/sync; echo; }
 
 # Back to real FPL data, then wipe everything scored on matches that have not really kicked off yet.
+# Limitation: lineups the sync carried over to a simulated match stay (only their points are cleared), because
+# club_lineups has no marker telling them from lineups the user saved; deleting would risk the user's own rows.
 # Covers every round simulated so far, not just the last one (switching rounds used to leave points behind).
 reset() {
   sql "delete from app_config where key = 'sim_round'"
