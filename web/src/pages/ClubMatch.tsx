@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { CardsSkeleton } from '@/components/Skeleton'
 import { CATALOG_BY_KEY } from '@shared/catalog.ts'
@@ -85,7 +86,10 @@ export function ClubMatch({ profile }: { profile: Profile }) {
   return (
     <section className="space-y-8">
       <div>
-        <h1 className="font-heading text-4xl leading-none">Môj klub</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-heading text-4xl leading-none">Môj klub</h1>
+          <Link to="/klub/kader" className="underline">Káder</Link>
+        </div>
         <p>Pred každým zápasom postav zostavu piatich hráčov, zbierajú IQ podľa FPL bodov. K tomu si môžeš vybrať až 3 tipy.</p>
       </div>
       {error && <p role="alert" className="rounded-lg bg-white p-3 text-red-700">{error}</p>}

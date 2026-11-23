@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { useMyProfile, useSession, useTeams } from '@/lib/data'
 import { ChooseClub } from '@/pages/ChooseClub'
 import { ClubMatch } from '@/pages/ClubMatch'
+import { ClubSquad } from '@/pages/ClubSquad'
 import { DuelsPage } from '@/pages/DuelsPage'
 import { DUELS_ENABLED } from '@/lib/features'
 import { HowToPlay } from '@/pages/HowToPlay'
@@ -32,6 +33,7 @@ export default function App() {
         <Route element={<Shell profile={profile.data} />}>
           <Route index element={<Round />} />
           <Route path="klub" element={<ClubMatch profile={profile.data} />} />
+          <Route path="klub/kader" element={<ClubSquad profile={profile.data} />} />
           <Route path="tabulky" element={<Standings />} />
           {DUELS_ENABLED && <Route path="duely" element={<DuelsPage />} />}
           <Route path="pravidla" element={<HowToPlay />} />
