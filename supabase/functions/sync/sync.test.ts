@@ -336,6 +336,18 @@ Deno.test('copies the last lineup at kickoff, skipping injured players', async (
   assertEquals((await lineupRows(1002)).map((r) => r.slot), ['flex', 'fwd', 'gk', 'mid'])
 })
 
+Deno.test('carries a lineup over to a match first seen already finished', async () => {
+  const { alfa } = await reset()
+  const first = fixture(1001, { event: GW - 1, kickoff_time: earlier })
+  await runSync(db, api([first, fixture(1002, upcoming)]))
+  await lineup(alfa, 1001, fullLineup)
+  // No sync ran while 1002 was live: it shows up finished.
+  await runSync(db, api([first, fixture(1002, { finished: true })]))
+  const rows = await lineupRows(1002)
+  assertEquals(rows.map((r) => r.slot), ['flex', 'def', 'fwd', 'gk', 'mid'].sort())
+  assertEquals(rows.every((r) => r.points != null && r.is_final), true)
+})
+
 Deno.test('does not overwrite a saved lineup', async () => {
   const { alfa } = await reset()
   const fixtures = [fixture(1001, { event: GW - 1, kickoff_time: earlier }), fixture(1002, upcoming)]

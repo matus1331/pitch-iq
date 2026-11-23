@@ -139,8 +139,13 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
   )
   const kicked = fixtures.filter((f) => f.started && f.kickoff_time != null)
     .sort((a, b) => a.kickoff_time!.localeCompare(b.kickoff_time!))
-  for (const f of kicked.filter((f) => !f.finished)) {
-    const owners = [...clubOf].filter(([, club]) => club === f.team_h || club === f.team_a).map(([id]) => id)
+  // Live or already finished: a match first seen finished still gets its carry-over before step 6 scores it.
+  // Same window as step 6, postponed matches excluded.
+  for (const f of kicked.filter((f) => f.gameweek_id != null && f.gameweek_id >= current - 1 && f.gameweek_id <= current && !moved.includes(f.id))) {
+    const voided = new Set<number>(
+      must(await db.from('club_tip_offers').select('team_id').eq('fixture_id', f.id).eq('voided', true)).map((o: Json) => o.team_id),
+    )
+    const owners = [...clubOf].filter(([, club]) => (club === f.team_h || club === f.team_a) && !voided.has(club)).map(([id]) => id)
     if (!owners.length) continue
     const has = new Set(must(await db.from('club_lineups').select('user_id').eq('fixture_id', f.id)).map((l: Json) => l.user_id))
     const rows = []
