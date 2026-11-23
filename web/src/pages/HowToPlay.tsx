@@ -58,9 +58,9 @@ export function HowToPlay() {
         <p><b>Kedy sa tip zamkne:</b> každý zápas pri svojom výkope. Tipy ostatných uvidíš až potom.</p>
         <p><b>Kedy pribudnú body:</b> do pár minút po skončení zápasu. Počas zápasu sú predbežné.</p>
         <p><b>Klubové tipy:</b> ku každému zápasu tvojho klubu ponúkame všetky tipy, rozdelené do kategórií: Góly, Karty, Obrana, Výkon a Zvláštnosti zápasu. Vyberieš si najviac 3 na zápas. Klub si vyberáš raz na celú sezónu.</p>
-        <p><b>Zostava:</b> vyberieš 5 hráčov, voľné miesto môže byť z poľa. Zraneného ani suspendovaného hráča vybrať nejde. Zostava sa pri výkope prenáša z minulého kola. 1 FPL bod = 1 IQ, a keďže body môžu byť aj záporné, IQ môže klesnúť, level nikdy.</p>
+        <p><b>Zostava:</b> vyberieš 5 hráčov, voľné miesto môže byť z poľa. Zraneného ani suspendovaného hráča vybrať nejde. Zostava sa pri výkope prenáša z minulého kola. 1 FPL bod = 1 IQ, a keďže body môžu byť aj záporné, IQ môže klesnúť, ale level nikdy neklesne.</p>
         <table className="w-full text-left">
-          <thead className="text-xs text-neutral-500"><tr><th className="py-1">Čo hráč urobí</th><th className="text-center">GK</th><th className="text-center">DEF</th><th className="text-center">MID</th><th className="text-center">FWD</th></tr></thead>
+          <thead className="text-xs text-neutral-500"><tr><th scope="col" className="py-1">Čo hráč urobí</th><th scope="col" className="text-center">GK</th><th scope="col" className="text-center">DEF</th><th scope="col" className="text-center">MID</th><th scope="col" className="text-center">FWD</th></tr></thead>
           <tbody className="divide-y divide-neutral-100">
             {LINEUP_POINTS.map(([what, ...v]) => (
               <tr key={what}><td className="py-1">{what}</td>{v.map((x, i) => <td key={i} className="text-center">{x}</td>)}</tr>
@@ -73,11 +73,11 @@ export function HowToPlay() {
         <p><b>Duel o kolo:</b> kto v kole naberie viac IQ za tipy zápasov, berie stávku. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky. Duely o Môj klub pripravujeme.</p>
         <p><b>Duel o zápas:</b> súper prijme so svojím tipom na zápas a ty uvidíš len jeho stranu (1, X alebo 2), nikdy presné skóre. Potom si vyberieš jednu zo zvyšných strán (výhra aj prehra je celá stávka; ak padne tretí výsledok, nikto nič nezíska), alebo dvojtip bez jeho strany, ktorý vyhrá len polovicu stávky, ale prehrá celú. Alebo duel odmietneš, no zaráta sa ti medzi 3 zápasové duely kola a na ten zápas už toho hráča nevyzveš. Súper po prijatí môže meniť skóre, ale nie víťaza.</p>
         </>}
-        <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne, IQ sa počíta len z tipov. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
+        <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne: aj keď IQ po záporných bodoch zostavy klesne, level sa drží podľa najvyššieho dosiahnutého IQ. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
       </div>
       <div id="tabulka" className="scroll-mt-4 space-y-3 rounded-xl bg-white p-4 text-sm text-neutral-700 shadow-md">
         <h2 className="text-base font-semibold text-neutral-900">Čo je v tabuľke</h2>
-        <p>V záložke Zápasy je pri každom hráčovi rozpis jeho tipov na výsledky zápasov:</p>
+        <p>V záložke Zápasy je pri každom hráčovi rozpis jeho tipov na výsledky zápasov. V záložke Môj klub sú body za klubové tipy a zostavu spolu, pri hráčovi vidíš aj „z toho zostava“.</p>
         <ul className="space-y-1.5">
           <li><b>🎯 Presný výsledok:</b> koľkokrát trafil skóre presne (6 IQ).</li>
           <li><b>✓ Správny víťaz alebo remíza:</b> správny výsledok zápasu, ale skóre nesedelo (3 IQ).</li>
@@ -89,7 +89,7 @@ export function HowToPlay() {
           Čím menej, tým lepšie, 0 znamená presný tip. Ak zápas skončil 2:1:
         </p>
         <table className="w-full text-left">
-          <thead className="text-xs text-neutral-500"><tr><th className="py-1">Tip</th><th>Výpočet</th><th>Chyba</th></tr></thead>
+          <thead className="text-xs text-neutral-500"><tr><th scope="col" className="py-1">Tip</th><th scope="col">Výpočet</th><th scope="col">Chyba</th></tr></thead>
           <tbody className="divide-y divide-neutral-100">
             <tr><td className="py-1">2:1</td><td>0 + 0</td><td><b>0</b></td></tr>
             <tr><td className="py-1">3:2</td><td>1 + 1</td><td><b>2</b></td></tr>
