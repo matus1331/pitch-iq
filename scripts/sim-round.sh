@@ -14,6 +14,7 @@ reset() {
   sync
   sql "update match_tips set points = null, is_final = false where not kicked_off(fixture_id);
        update club_tips set points = null, is_final = false where not kicked_off(fixture_id);
+       update club_lineups set points = null, is_final = false where not kicked_off(fixture_id);
        delete from player_match_stats where not kicked_off(fixture_id);
        update duels set status = 'accepted', challenger_iq = null, opponent_iq = null,
          challenger_delta = null, opponent_delta = null

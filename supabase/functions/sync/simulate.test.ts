@@ -41,3 +41,12 @@ Deno.test('player stats add up to the simulated score', async () => {
   assert(live.elements.every((e: { stats: { minutes: number } }) => e.stats.minutes > 0))
   assertEquals(live, await sim.fetchLive(11))
 })
+
+Deno.test('simulated players get FPL points that match their breakdown', async () => {
+  const live = await simulateRound(real, 11).fetchLive(11)
+  for (const e of live.elements) {
+    const rows = e.explain[0].stats as { points: number }[]
+    assertEquals(e.stats.total_points, rows.reduce((n, r) => n + r.points, 0))
+  }
+  assert(live.elements.some((e: { stats: { total_points: number } }) => e.stats.total_points > 2), 'someone scores beyond minutes')
+})

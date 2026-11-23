@@ -57,6 +57,25 @@ function teamStats(fixtureId: number, team: number, goals: number, conceded: num
   return stats
 }
 
+const GOAL_POINTS = [0, 6, 6, 5, 4] // by element_type: GK, DEF, MID, FWD
+
+/** FPL scoring (simplified) for one simulated player, as FPL's `explain` rows; rows worth nothing are left out. */
+function explainRows(s: Json, pos: number, conceded: number) {
+  const full = s.minutes >= 60
+  const rows: [string, number, number][] = [
+    ['minutes', s.minutes, full ? 2 : 1],
+    ['goals_scored', s.goals_scored, s.goals_scored * GOAL_POINTS[pos]],
+    ['assists', s.assists, s.assists * 3],
+    ['clean_sheets', conceded === 0 && full ? 1 : 0, conceded === 0 && full ? (pos <= 2 ? 4 : pos === 3 ? 1 : 0) : 0],
+    ['goals_conceded', conceded, pos <= 2 ? -Math.floor(conceded / 2) : 0],
+    ['saves', s.saves, Math.floor(s.saves / 3)],
+    ['yellow_cards', s.yellow_cards, -s.yellow_cards],
+    ['red_cards', s.red_cards, -3 * s.red_cards],
+    ['bonus', s.bonus, s.bonus],
+  ]
+  return rows.filter(([, , points]) => points !== 0).map(([identifier, value, points]) => ({ identifier, value, points }))
+}
+
 export function simulateRound(real: FplApi, gw: number): FplApi {
   return {
     async fetchBootstrap() {
@@ -89,7 +108,14 @@ export function simulateRound(real: FplApi, gw: number): FplApi {
         const ranked = all.flatMap((m) => [...m.entries()])
           .sort((x, y) => (y[1].goals_scored * 3 + y[1].assists) - (x[1].goals_scored * 3 + x[1].assists))
         ranked.slice(0, 3).forEach(([, s], i) => { if (s.goals_scored + s.assists > 0) s.bonus = 3 - i })
-        for (const [id, stats] of ranked) elements.push({ id, stats, explain: [{ fixture: f.id, stats: [] }] })
+        const conceded = [f.team_a_score, f.team_h_score]
+        all.forEach((m, side) => {
+          for (const [id, stats] of m) {
+            const rows = explainRows(stats, boot.elements.find((e: Json) => e.id === id).element_type, conceded[side])
+            stats.total_points = rows.reduce((n, r) => n + r.points, 0)
+            elements.push({ id, stats, explain: [{ fixture: f.id, stats: rows }] })
+          }
+        })
       }
       return { elements }
     },
