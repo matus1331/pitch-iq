@@ -106,3 +106,4 @@ $$;
 
 -- The guard is for the trigger only; assert_open_lineup stays callable because the trigger runs it as the client.
 revoke execute on function club_lineups_guard() from public, anon, authenticated;
+revoke execute on function assert_open_lineup(int) from public, anon;

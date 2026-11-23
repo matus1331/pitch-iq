@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(16);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'a@test.local'),
@@ -18,10 +18,14 @@ insert into players (id, team_id, web_name, position, status) values
   (90113, 9011, 'Injured', 3, 'i'), (90114, 9011, 'Doubtful', 4, 'd'),
   (90115, 9001, 'Rival', 2, 'a');
 
+insert into gameweeks (id, deadline_time, is_current, is_next, finished) values (9014, now(), false, false, true);
+insert into fixtures (id, gameweek_id, kickoff_time, team_h, team_a) values (9104, 9014, now() - interval '3 days', 9011, 9001);
+
 -- rows seeded as postgres (the sync job): a locked-match lineup, a scored lineup and a scored club tip
 insert into club_lineups (user_id, fixture_id, slot, player_id, points, is_final) values
   ('00000000-0000-0000-0000-00000000000a', 9101, 'gk', 90111, null, false),
-  ('00000000-0000-0000-0000-00000000000a', 9101, 'def', 90112, 7, true);
+  ('00000000-0000-0000-0000-00000000000a', 9101, 'def', 90112, 7, true),
+  ('00000000-0000-0000-0000-00000000000a', 9104, 'gk', 90111, 5, true);  -- round 9014: lineup only, no tips
 insert into club_tips (user_id, fixture_id, tip_key, points, is_final) values
   ('00000000-0000-0000-0000-00000000000a', 9101, 'team_red', 3, true);
 
@@ -77,6 +81,9 @@ set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000000a","r
 select results_eq(
   $$select points, lineup_points from leaderboard_club where user_id = auth.uid() and gameweek_id = 9013$$,
   $$values (10, 7)$$, 'leaderboard_sums_tips_and_lineup');
+select results_eq(
+  $$select points, lineup_points from leaderboard_club where user_id = auth.uid() and gameweek_id = 9014$$,
+  $$values (5, 5)$$, 'leaderboard_row_for_lineup_only_round');
 
 select * from finish();
 rollback;
