@@ -14,6 +14,10 @@ export interface PlayerStats {
   penalties_saved: number
   tackles: number | null
   expected_goals: number | null
+  /** FPL points of the player in this match. */
+  total_points: number | null
+  /** FPL `explain` entry of this match: how the points were earned. */
+  breakdown: { identifier: string; value: number; points: number }[]
 }
 
 export interface MatchContext {

@@ -9,7 +9,7 @@ function stats(p: Partial<PlayerStats> = {}): PlayerStats {
   return {
     minutes: 90, starts: 1, goals_scored: 0, assists: 0, yellow_cards: 0, red_cards: 0,
     own_goals: 0, saves: 0, bonus: 0, penalties_missed: 0, penalties_saved: 0,
-    tackles: 0, expected_goals: 0, ...p,
+    tackles: 0, expected_goals: 0, total_points: 0, breakdown: [], ...p,
   }
 }
 

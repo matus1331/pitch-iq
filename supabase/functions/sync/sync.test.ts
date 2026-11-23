@@ -3,6 +3,7 @@
 import { assertEquals } from 'jsr:@std/assert@1'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import bootstrap from './fixtures/bootstrap.json' with { type: 'json' }
+import { eligibleKeys } from '../_shared/rotation.ts'
 import { type FplApi, runSync } from './sync.ts'
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -22,34 +23,39 @@ function fixture(id: number, over: Fx = {}): Fx {
     started: true, finished_provisional: true, finished: true, stats: [], ...over,
   }
 }
-function live(scorer: number): unknown {
-  const el = (id: number, s: Record<string, number | string>) => ({
+type Explain = { fixture: number; stats: { identifier: string; value: number; points: number }[] }[]
+const played90 = { identifier: 'minutes', value: 90, points: 2 }
+function el(id: number, s: Record<string, number | string>, explain: Explain = [{ fixture: 1001, stats: [played90] }]) {
+  return {
     id,
     stats: {
       minutes: 90, starts: 1, goals_scored: 0, assists: 0, yellow_cards: 0, red_cards: 0, own_goals: 0,
-      saves: 0, bonus: 0, penalties_missed: 0, penalties_saved: 0, tackles: 0, expected_goals: '0.00', ...s,
+      saves: 0, bonus: 0, penalties_missed: 0, penalties_saved: 0, tackles: 0, expected_goals: '0.00', total_points: 2, ...s,
     },
-    explain: [{ fixture: 1001, stats: [] }],
-  })
+    explain,
+  }
+}
+function live(scorer: number): unknown {
   return {
     elements: [
-      el(PICKFORD, { saves: 4 }),
-      el(JOHNSON, { goals_scored: scorer === JOHNSON ? 2 : 0 }),
+      el(PICKFORD, { saves: 4, total_points: 3 }),
+      el(JOHNSON, { goals_scored: scorer === JOHNSON ? 2 : 0, total_points: scorer === JOHNSON ? 12 : 2 }),
       el(21, { goals_scored: scorer === 21 ? 2 : 0 }),
-      el(GABRIEL, { goals_scored: 1 }),
+      el(GABRIEL, { goals_scored: 1, total_points: 8 }),
     ],
   }
 }
 const bootstrapNow = { ...bootstrap, events: bootstrap.events.map((e) => ({ ...e, is_current: e.id === GW, is_next: e.id === GW + 1 })) }
-function api(fixtures: Fx[], scorer = JOHNSON): FplApi {
+function api(fixtures: Fx[], scorer = JOHNSON, over: { live?: unknown; boot?: unknown } = {}): FplApi {
   return {
-    fetchBootstrap: () => Promise.resolve(bootstrapNow),
+    fetchBootstrap: () => Promise.resolve(over.boot ?? bootstrapNow),
     fetchFixtures: () => Promise.resolve(fixtures),
-    fetchLive: () => Promise.resolve(live(scorer)),
+    fetchLive: () => Promise.resolve(over.live ?? live(scorer)),
   }
 }
 
 async function reset(): Promise<{ alfa: string }> {
+  await db.from('club_lineups').delete().gte('fixture_id', 0)
   await db.from('club_tips').delete().gte('fixture_id', 0)
   await db.from('match_tips').delete().gte('fixture_id', 0)
   await db.from('club_tip_offers').delete().gte('fixture_id', 0)
@@ -268,4 +274,92 @@ Deno.test('a match duel without the challenger\'s pick is withdrawn at kickoff, 
   await runSync(db, api([fixture(1001, { finished: false, finished_provisional: false }), fixture(1002, { ...upcoming, kickoff_time: null })]))
   const { data } = await db.from('duels').select('fixture_id, status').order('fixture_id')
   assertEquals(data!.map((d) => d.status), ['withdrawn', 'cancelled'])
+})
+
+const upcoming = { kickoff_time: future, started: false, finished_provisional: false, finished: false, team_h_score: null, team_a_score: null }
+const running = { finished_provisional: false, finished: false }
+const six = ['player_goal', 'player_brace', 'player_yellow', 'team_saves_over', 'team_red', 'match_own_goal']
+const TARKOWSKI = 229, BARRY = 249, DEWSBURY = 236, TRAVERS = 227
+const earlier = new Date(Date.now() - 4 * 86400e3).toISOString()
+
+async function statsOf(player: number, fixtureId: number) {
+  const { data } = await db.from('player_match_stats').select('stats').eq('player_id', player).eq('fixture_id', fixtureId).single()
+  return data!.stats
+}
+async function lineup(user: string, fixtureId: number, picks: [string, number][]) {
+  await ok(db.from('club_lineups').insert(picks.map(([slot, player_id]) => ({ user_id: user, fixture_id: fixtureId, slot, player_id }))))
+}
+async function lineupRows(fixtureId: number) {
+  const { data } = await db.from('club_lineups').select('slot, player_id, points, is_final').eq('fixture_id', fixtureId).order('slot')
+  return data!
+}
+const fullLineup: [string, number][] = [['gk', PICKFORD], ['def', TARKOWSKI], ['mid', JOHNSON], ['fwd', BARRY], ['flex', DEWSBURY]]
+
+Deno.test('stores total points and the per-fixture breakdown', async () => {
+  await reset()
+  await runSync(db, api([fixture(1001)]))
+  const s = await statsOf(PICKFORD, 1001)
+  assertEquals([s.total_points, s.breakdown], [3, [played90]])
+})
+
+Deno.test('double gameweek scores each match from its own explain entry', async () => {
+  await reset()
+  const saves = { identifier: 'saves', value: 3, points: 1 }
+  const conceded = { identifier: 'goals_conceded', value: 4, points: -2 }
+  const liveDouble = { elements: [el(PICKFORD, { total_points: 3 }, [
+    { fixture: 1001, stats: [played90, saves] },
+    { fixture: 1002, stats: [played90, conceded] },
+  ])] }
+  await runSync(db, api([fixture(1001), fixture(1002, { team_h: ARS, team_a: EVE })], JOHNSON, { live: liveDouble }))
+  const a = await statsOf(PICKFORD, 1001), b = await statsOf(PICKFORD, 1002)
+  assertEquals([a.total_points, a.breakdown, b.total_points, b.breakdown], [3, [played90, saves], 0, [played90, conceded]])
+})
+
+Deno.test('offers every eligible tip and widens an old six', async () => {
+  await reset()
+  const fixtures = [fixture(1001, upcoming), fixture(1002, { event: GW - 1, ...running })]
+  await runSync(db, api(fixtures))
+  await ok(db.from('club_tip_offers').update({ tip_keys: six }).eq('fixture_id', 1001))
+  await ok(db.from('club_tip_offers').insert({ fixture_id: 1002, team_id: EVE, tip_keys: six }))
+  await runSync(db, api(fixtures))
+  const { data } = await db.from('club_tip_offers').select('fixture_id, tip_keys').order('fixture_id')
+  assertEquals(data!.map((o) => o.tip_keys), [eligibleKeys(false), six])
+})
+
+Deno.test('copies the last lineup at kickoff, skipping injured players', async () => {
+  const { alfa } = await reset()
+  const fixtures = [fixture(1001, { event: GW - 1, kickoff_time: earlier }), fixture(1002, upcoming)]
+  await runSync(db, api(fixtures))
+  await lineup(alfa, 1001, fullLineup)
+  const injured = { ...bootstrapNow, elements: bootstrapNow.elements.map((e) => e.id === TARKOWSKI ? { ...e, status: 'i' } : e) }
+  await runSync(db, api([fixtures[0], fixture(1002, running)], JOHNSON, { boot: injured }))
+  assertEquals((await lineupRows(1002)).map((r) => r.slot), ['flex', 'fwd', 'gk', 'mid'])
+})
+
+Deno.test('does not overwrite a saved lineup', async () => {
+  const { alfa } = await reset()
+  const fixtures = [fixture(1001, { event: GW - 1, kickoff_time: earlier }), fixture(1002, upcoming)]
+  await runSync(db, api(fixtures))
+  await lineup(alfa, 1001, fullLineup)
+  await lineup(alfa, 1002, [['gk', TRAVERS]])
+  await runSync(db, api([fixtures[0], fixture(1002, running)]))
+  assertEquals((await lineupRows(1002)).map((r) => r.player_id), [TRAVERS])
+})
+
+Deno.test('scores lineups from FPL points, missing player gets 0', async () => {
+  const { alfa } = await reset()
+  await runSync(db, api([fixture(1001, upcoming)]))
+  await lineup(alfa, 1001, [['gk', PICKFORD], ['mid', JOHNSON], ['fwd', BARRY]])
+  await runSync(db, api([fixture(1001, { finished: false })]))
+  assertEquals((await lineupRows(1001)).map((r) => [r.slot, r.points, r.is_final]), [['fwd', 0, false], ['gk', 3, false], ['mid', 12, false]])
+  await runSync(db, api([fixture(1001)]))
+  assertEquals((await lineupRows(1001)).map((r) => r.is_final), [true, true, true])
+})
+
+Deno.test('postponed match voids lineups', async () => {
+  const { alfa } = await reset()
+  await runSync(db, api([fixture(1001, upcoming)]))
+  await lineup(alfa, 1001, [['gk', PICKFORD]])
+  await runSync(db, api([fixture(1001, { ...upcoming, event: null, kickoff_time: null })]))
+  assertEquals((await lineupRows(1001)).map((r) => [r.points, r.is_final]), [[0, true]])
 })

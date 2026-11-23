@@ -1,6 +1,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { matchDuelDeltas, sideOf } from '../_shared/duel.ts'
 import { iqTotals, levelFor } from '../_shared/level.ts'
+import { carryOver, lineupPoints } from '../_shared/lineup.ts'
 import { eligibleKeys } from '../_shared/rotation.ts'
 import { type PlayerStats, scoreClubTip, scoreMatchTip } from '../_shared/scoring.ts'
 
@@ -63,6 +64,8 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
   must(await db.from('players').upsert(boot.elements.map((e: Json) => ({
     id: e.id, team_id: e.team, web_name: e.web_name, position: e.element_type,
     status: e.status ?? 'a', chance_next: e.chance_of_playing_next_round ?? null, news: e.news || null, start_pct: startPct(e),
+    total_points: e.total_points ?? null, form: e.form == null ? null : Number(e.form), minutes: e.minutes ?? null,
+    goals_scored: e.goals_scored ?? null, assists: e.assists ?? null,
   }))))
   must(await db.from('gameweeks').upsert(boot.events.map((e: Json) => ({
     id: e.id, deadline_time: e.deadline_time, is_current: e.is_current, is_next: e.is_next, finished: e.finished,
@@ -101,28 +104,57 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
       const gwFixtures = fixtures.filter((f) => f.gameweek_id === gw && f.started && (f.team_h === team || f.team_a === team))
       for (const f of gwFixtures) {
         const double = f.team_h === team ? f.is_double_gw_h : f.is_double_gw_a
-        const entry = (el.explain ?? []).find((x: Json) => x.fixture === f.id)
-        const stats = double ? statsFromExplain(entry ?? {}) : statsFromLive(el.stats)
+        const entry = (el.explain ?? []).find((x: Json) => x.fixture === f.id) ?? {}
+        const breakdown = (entry.stats ?? []).map((x: Json) => ({ identifier: x.identifier, value: Number(x.value), points: Number(x.points) }))
+        const stats: PlayerStats = {
+          ...(double ? statsFromExplain(entry) : statsFromLive(el.stats)),
+          total_points: double ? breakdown.reduce((n: number, x: Json) => n + x.points, 0)
+            : el.stats.total_points == null ? null : Number(el.stats.total_points),
+          breakdown,
+        }
         rows.push({ player_id: el.id, fixture_id: f.id, team_id: team, stats })
       }
     }
     if (rows.length) must(await db.from('player_match_stats').upsert(rows))
   }
 
-  // 4. create offers for upcoming matches of owned clubs: every eligible tip.
+  // 4. offers for upcoming matches of owned clubs: every eligible tip, also widening older offers.
   const owned = new Set<number>(
     must(await db.from('profiles').select('club_team_id').not('club_team_id', 'is', null)).map((p: Json) => p.club_team_id),
   )
-  const existingOffers: Json[] = must(await db.from('club_tip_offers').select('fixture_id, team_id'))
-  const hasOffer = new Set(existingOffers.map((o) => `${o.fixture_id}:${o.team_id}`))
   for (const gw of [current, current + 1]) {
-    const roundFixtures = fixtures.filter((f) => f.gameweek_id === gw && f.kickoff_time && !f.started)
-    const missing = roundFixtures.flatMap((f) => [f.team_h, f.team_a].filter((t) => owned.has(t) && !hasOffer.has(`${f.id}:${t}`)).map((t) => [f.id, t] as const))
-    if (!missing.length) continue
     // Double-gameweek-safe keys for the whole round as soon as any club plays twice in it.
     const double = fixtures.some((f) => f.gameweek_id === gw && (f.is_double_gw_h || f.is_double_gw_a))
-    must(await db.from('club_tip_offers').insert(missing.map(([fixture_id, team_id]) => ({ fixture_id, team_id, tip_keys: eligibleKeys(double) }))))
-    for (const [f, t] of missing) hasOffer.add(`${f}:${t}`)
+    const offers = fixtures.filter((f) => f.gameweek_id === gw && f.kickoff_time && !f.started)
+      .flatMap((f) => [f.team_h, f.team_a].filter((t) => owned.has(t)).map((team_id) => ({ fixture_id: f.id, team_id, tip_keys: eligibleKeys(double) })))
+    if (offers.length) must(await db.from('club_tip_offers').upsert(offers))
+  }
+
+  // 4b. at kickoff an owner without a lineup gets their last one, minus players who can no longer play.
+  const clubOf = new Map<string, number>(
+    must(await db.from('profiles').select('id, club_team_id')).map((p: Json) => [p.id, p.club_team_id]),
+  )
+  const playerInfo = new Map<number, { team_id: number; position: number; status: string }>(
+    boot.elements.map((e: Json) => [e.id, { team_id: e.team, position: e.element_type, status: e.status ?? 'a' }]),
+  )
+  const kicked = fixtures.filter((f) => f.started && f.kickoff_time != null)
+    .sort((a, b) => a.kickoff_time!.localeCompare(b.kickoff_time!))
+  for (const f of kicked.filter((f) => !f.finished)) {
+    const owners = [...clubOf].filter(([, club]) => club === f.team_h || club === f.team_a).map(([id]) => id)
+    if (!owners.length) continue
+    const has = new Set(must(await db.from('club_lineups').select('user_id').eq('fixture_id', f.id)).map((l: Json) => l.user_id))
+    const rows = []
+    for (const user of owners.filter((u) => !has.has(u))) {
+      const club = clubOf.get(user)!
+      const earlier = kicked.filter((p) => p.kickoff_time! < f.kickoff_time! && (p.team_h === club || p.team_a === club)).map((p) => p.id)
+      if (!earlier.length) continue
+      // The latest earlier match this owner had a lineup for.
+      const prev: Json[] = must(await db.from('club_lineups').select('fixture_id, slot, player_id').eq('user_id', user).in('fixture_id', earlier))
+      const last = earlier.findLast((id) => prev.some((l) => l.fixture_id === id))
+      if (last == null) continue
+      rows.push(...carryOver(prev.filter((l) => l.fixture_id === last), playerInfo, club).map((p) => ({ user_id: user, fixture_id: f.id, slot: p.slot, player_id: p.player_id })))
+    }
+    if (rows.length) must(await db.from('club_lineups').insert(rows))
   }
 
   // 5. postponed: void club tips, unscore match tips
@@ -134,6 +166,7 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
   if (voidIds.length) {
     must(await db.from('club_tip_offers').update({ voided: true }).in('fixture_id', voidIds))
     must(await db.from('club_tips').update({ points: 0, is_final: true }).in('fixture_id', voidIds))
+    must(await db.from('club_lineups').update({ points: 0, is_final: true }).in('fixture_id', voidIds))
   }
 
   // 6. score finished matches of the recent rounds from scratch (idempotent).
@@ -147,10 +180,6 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
     await settleDuels(db, fixtures)
     return { fixtures: fixtures.length, scored }
   }
-  const clubOf = new Map<string, number>(
-    must(await db.from('profiles').select('id, club_team_id')).map((p: Json) => [p.id, p.club_team_id]),
-  )
-
   for (const f of done) {
     const matchTips: Json[] = must(await db.from('match_tips').select('*').eq('fixture_id', f.id))
     if (matchTips.length) {
@@ -161,28 +190,43 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
     }
 
     const clubTips: Json[] = must(await db.from('club_tips').select('*').eq('fixture_id', f.id))
-    if (!clubTips.length) continue
+    const lineups: Json[] = must(await db.from('club_lineups').select('*').eq('fixture_id', f.id))
+    if (!clubTips.length && !lineups.length) continue
     const voided = new Set<number>(
       must(await db.from('club_tip_offers').select('team_id').eq('fixture_id', f.id).eq('voided', true)).map((o: Json) => o.team_id),
     )
+    // A tip or lineup counts only for an owner whose club plays this match and was not voided (moved match).
+    const counts = (user: string) => {
+      const club = clubOf.get(user)
+      return club != null && (club === f.team_h || club === f.team_a) && !voided.has(club)
+    }
     const statsRows: Json[] = must(await db.from('player_match_stats').select('player_id, team_id, stats').eq('fixture_id', f.id))
     const players = new Map(statsRows.map((s) => [s.player_id, { teamId: s.team_id, stats: s.stats }]))
-    must(await db.from('club_tips').upsert(clubTips.map((t) => {
-      const club = clubOf.get(t.user_id)
-      let pts = 0
-      if (club != null && (club === f.team_h || club === f.team_a) && !voided.has(club)) {
-        const home = club === f.team_h
-        pts = scoreClubTip(t, {
-          clubId: club,
-          opponentId: home ? f.team_a : f.team_h,
-          clubGoals: home ? f.team_h_score! : f.team_a_score!,
-          opponentGoals: home ? f.team_a_score! : f.team_h_score!,
-          players,
-        })
-      }
-      return { ...t, points: pts, is_final: f.finished }
-    })))
-    scored += clubTips.length
+    if (clubTips.length) {
+      must(await db.from('club_tips').upsert(clubTips.map((t) => {
+        let pts = 0
+        if (counts(t.user_id)) {
+          const club = clubOf.get(t.user_id)!
+          const home = club === f.team_h
+          pts = scoreClubTip(t, {
+            clubId: club,
+            opponentId: home ? f.team_a : f.team_h,
+            clubGoals: home ? f.team_h_score! : f.team_a_score!,
+            opponentGoals: home ? f.team_a_score! : f.team_h_score!,
+            players,
+          })
+        }
+        return { ...t, points: pts, is_final: f.finished }
+      })))
+      scored += clubTips.length
+    }
+    if (lineups.length) {
+      const stats = new Map<number, PlayerStats>(statsRows.map((s) => [s.player_id, s.stats]))
+      must(await db.from('club_lineups').upsert(lineups.map((l) => ({
+        ...l, points: counts(l.user_id) ? lineupPoints(l.player_id, stats) : 0, is_final: f.finished,
+      }))))
+      scored += lineups.length
+    }
   }
   await settleDuels(db, fixtures)
   return { fixtures: fixtures.length, scored }
