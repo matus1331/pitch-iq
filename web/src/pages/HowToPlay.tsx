@@ -7,10 +7,28 @@ import { DUELS_ENABLED } from '@/lib/features'
 
 const STEPS = [
   { title: 'Tipuj zápasy kola', text: 'Pri každom zápase tipni presný výsledok. Za správneho víťaza alebo remízu dostaneš 3 IQ, za presné skóre ďalšie 3 IQ, spolu 6. Tip 2:2 pri výsledku 0:0 teda dá 3 IQ. Tip môžeš meniť až do výkopu.' },
-  { title: 'Vyber tri tipy pre svoj klub', text: 'V záložke Môj klub dostaneš ku každému zápasu šesť tipov, napríklad kto dá gól. Vyber si tri, body sú za tie, ktoré vyjdú.' },
+  { title: 'Tipy a zostava pre svoj klub', text: 'V záložke Môj klub si ku každému zápasu vyberieš až tri tipy, napríklad kto dá gól, a zostavíš päť hráčov. Body sú za tipy, ktoré vyjdú, a za výkony tvojich hráčov.' },
   DUELS_ENABLED
     ? { title: 'Zbieraj IQ a vyzývaj kamošov', text: 'Za IQ stúpaš v leveloch. V záložke Duely vyzveš kamoša o Rešpekt: na celé kolo alebo na jeden zápas.' }
     : { title: 'Zbieraj IQ', text: 'Za IQ stúpaš v leveloch a v tabuľkách sa porovnáš s kamošmi.' },
+]
+
+// FPL game_config.scoring, per position GK / DEF / MID / FWD.
+const LINEUP_POINTS: [string, ...string[]][] = [
+  ['Odohrané do 60 min', '1', '1', '1', '1'],
+  ['60 min a viac', '2', '2', '2', '2'],
+  ['Gól', '10', '6', '5', '4'],
+  ['Asistencia', '3', '3', '3', '3'],
+  ['Čisté konto', '4', '4', '1', '0'],
+  ['Každé 3 zákroky', '1', '–', '–', '–'],
+  ['Chytená penalta', '5', '–', '–', '–'],
+  ['Obranná práca', '0', '2', '2', '2'],
+  ['Bonus', '1 – 3', '1 – 3', '1 – 3', '1 – 3'],
+  ['Každé 2 inkasované góly', '−1', '−1', '0', '0'],
+  ['Nepremenená penalta', '−2', '−2', '−2', '−2'],
+  ['Žltá karta', '−1', '−1', '−1', '−1'],
+  ['Červená karta', '−3', '−3', '−3', '−3'],
+  ['Vlastný gól', '−2', '−2', '−2', '−2'],
 ]
 
 /** The rules on one page: three steps first, details after. */
@@ -39,7 +57,17 @@ export function HowToPlay() {
         <h2 className="text-base font-semibold text-neutral-900">Podrobnosti</h2>
         <p><b>Kedy sa tip zamkne:</b> každý zápas pri svojom výkope. Tipy ostatných uvidíš až potom.</p>
         <p><b>Kedy pribudnú body:</b> do pár minút po skončení zápasu. Počas zápasu sú predbežné.</p>
-        <p><b>Klubové tipy:</b> šestica sa losuje na každé kolo a je rovnaká pre všetkých. Klub si vyberáš raz na celú sezónu.</p>
+        <p><b>Klubové tipy:</b> ku každému zápasu tvojho klubu ponúkame všetky tipy, rozdelené do kategórií: Góly, Karty, Obrana, Výkon a Zvláštnosti zápasu. Vyberieš si najviac 3 na zápas. Klub si vyberáš raz na celú sezónu.</p>
+        <p><b>Zostava:</b> vyberieš 5 hráčov, voľné miesto môže byť z poľa. Zraneného ani suspendovaného hráča vybrať nejde. Zostava sa pri výkope prenáša z minulého kola. 1 FPL bod = 1 IQ, a keďže body môžu byť aj záporné, IQ môže klesnúť, level nikdy.</p>
+        <table className="w-full text-left">
+          <thead className="text-xs text-neutral-500"><tr><th className="py-1">Čo hráč urobí</th><th className="text-center">GK</th><th className="text-center">DEF</th><th className="text-center">MID</th><th className="text-center">FWD</th></tr></thead>
+          <tbody className="divide-y divide-neutral-100">
+            {LINEUP_POINTS.map(([what, ...v]) => (
+              <tr key={what}><td className="py-1">{what}</td>{v.map((x, i) => <td key={i} className="text-center">{x}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="text-xs text-neutral-500">Obranná práca: pri DEF za 10 odkopov, blokov, zákrokov a zachytení, pri MID a FWD za 12, keď sa ráta aj získanie lopty. Zákroky sa rátajú len brankárovi.</p>
         {DUELS_ENABLED && <>
         <p><b>Duely:</b> hrajú sa o Rešpekt (R), samostatnú menu, ktorá IQ ani level nemení. Každý začína so 100 R a za každé kolo, v ktorom natipuje všetky zápasy, dostane +5 R. Stávka je 5, 10 alebo 20 R a duel začne, len keď obaja máte aspoň 10 voľného R.</p>
         <p><b>Duel o kolo:</b> kto v kole naberie viac IQ za tipy zápasov, berie stávku. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky. Duely o Môj klub pripravujeme.</p>

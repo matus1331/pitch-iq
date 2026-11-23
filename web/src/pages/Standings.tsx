@@ -24,6 +24,9 @@ export function Standings() {
   // Hit counts and accuracy exist for match tips only; they also break ties in points.
   const stats = board === 'individual' ? tipStats(tips.data ?? [], gw) : new Map<string, TipStats>()
   const ranked = rankRows(totals(rows, players, gw).map((r) => ({ ...r, exact: stats.get(r.user_id)?.exact, avgError: stats.get(r.user_id)?.avgError })))
+  // Club board: the part of each player's points that came from the lineup.
+  const lineup = new Map<string, number>()
+  if (board === 'club') for (const r of rows) if (gw == null || r.gameweek_id === gw) lineup.set(r.user_id, (lineup.get(r.user_id) ?? 0) + (r.lineup_points ?? 0))
   const nobody = ranked.every((r) => r.points === 0)
   const rounds = [...new Set(rows.map((r) => r.gameweek_id))].sort((a, b) => b - a)
   const clubOf = new Map(players.map((p) => [p.id, p.club_team_id]))
@@ -85,6 +88,7 @@ export function Standings() {
                   <span className="flex min-w-0 items-center gap-1.5">
                     {board === 'club' && team && <img src={badgeUrl(team.code)} alt={team.name} className="size-5" />}
                     <span className="truncate">{r.nickname}</span>
+                    {board === 'club' && <span className="shrink-0 text-xs font-normal text-neutral-500">z toho zostava {lineup.get(r.user_id) ?? 0}</span>}
                   </span>
                   {withStats && <>
                     <span className="text-center">{st?.exact ?? 0}</span><span className="text-center">{st?.right ?? 0}</span>

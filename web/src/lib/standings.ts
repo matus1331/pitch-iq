@@ -1,7 +1,7 @@
 import { iqTotals } from '@shared/level.ts'
 import type { Duel } from './data'
 export interface Row { user_id: string; nickname: string; points: number }
-export interface RoundRow extends Row { gameweek_id: number }
+export interface RoundRow extends Row { gameweek_id: number; lineup_points?: number }
 
 /** Sum per player (optionally for one round); every profile appears, even with 0. */
 export function totals(rows: RoundRow[], profiles: { id: string; nickname: string }[], gw: number | null): Row[] {
