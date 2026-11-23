@@ -99,9 +99,7 @@ create or replace function iq_total(p_user uuid) returns int
 language sql stable security definer set search_path = public as $$
   select (coalesce((select sum(points) from match_tips where user_id = p_user), 0)
         + coalesce((select sum(points) from club_tips where user_id = p_user), 0)
-        + coalesce((select sum(points) from club_lineups where user_id = p_user), 0)
-        + coalesce((select sum(case when challenger_id = p_user then challenger_delta else opponent_delta end)
-                    from duels where status = 'finished' and p_user in (challenger_id, opponent_id)), 0))::int
+        + coalesce((select sum(points) from club_lineups where user_id = p_user), 0))::int
 $$;
 
 -- The guard is for the trigger only; assert_open_lineup stays callable because the trigger runs it as the client.
