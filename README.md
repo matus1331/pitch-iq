@@ -5,8 +5,9 @@ Bezplatná tipovačka Premier League pre partiu kamošov. Hráči zbierajú IQ b
 - **tipovanie výsledkov**: tipuje sa presný výsledok: za správneho víťaza alebo remízu 3 IQ, za presné skóre ďalšie 3 IQ (spolu 6),
 - **klubová súťaž**: pri každom zápase svojho klubu vyberieš 3 tipy zo šestice, ktorá sa losuje raz na kolo pre všetkých,
 - **duely**: vyzveš kamoša o 5, 10 alebo 20 IQ vo Výsledkoch alebo v Klube; kto naberie v kole v tej kategórii viac IQ, berie stávku.
+- **Liga majstrov**: samostatná súťaž v tipovaní výsledkov s vlastnou tabuľkou a rovnakým bodovaním (vo vyraďovacej časti platí skóre po 90 minútach). Do levelu sa neráta.
 
-Dáta sa berú z oficiálneho FPL API zadarmo. IQ body aj duely sa vyhodnocujú automaticky každých 10 minút.
+Dáta Premier League sa berú z oficiálneho FPL API zadarmo, dáta Ligy majstrov z [football-data.org](https://www.football-data.org) (plán zadarmo). IQ body aj duely sa vyhodnocujú automaticky každých 10 minút.
 
 Návrh je v `docs/superpowers/specs/`, plán implementácie v `docs/superpowers/plans/`.
 
@@ -35,7 +36,7 @@ npx supabase start
 npx supabase functions serve sync --env-file supabase/functions/.env
 ```
 
-`supabase/functions/.env` obsahuje `SYNC_SECRET=local-sync-secret`. Prvá synchronizácia FPL dát:
+`supabase/functions/.env` obsahuje `SYNC_SECRET=local-sync-secret` a pre Ligu majstrov `FOOTBALL_DATA_KEY=<kľúč>` (registrácia zadarmo na [football-data.org](https://www.football-data.org/client/register)). Bez kľúča sa Liga majstrov preskočí. Prvá synchronizácia dát:
 
 ```bash
 curl -X POST -H "Authorization: Bearer local-sync-secret" http://127.0.0.1:54321/functions/v1/sync
@@ -129,6 +130,10 @@ Vrátenie vráti zápasy na skutočné dáta FPL a zmaže body zo všetkých zá
    ```
 
    ```bash
+   npx supabase secrets set FOOTBALL_DATA_KEY=<kluc-z-football-data.org>
+   ```
+
+   ```bash
    npx supabase functions deploy sync --no-verify-jwt
    ```
 
@@ -164,3 +169,10 @@ Odkaz na appku a pozývací kód potom pošli kamošom.
   ```
 
 - Bezplatný Supabase projekt sa uspí po týždni bez návštevy. Prebudíš ho v dashboarde jedným klikom.
+- Pred novou sezónou Ligy majstrov treba starú vyčistiť v SQL editore, v tomto poradí:
+
+  ```sql
+  delete from cl_match_tips;
+  delete from cl_fixtures;
+  delete from cl_teams;
+  ```
