@@ -50,6 +50,13 @@ Deno.test('a running match is started, not finished', () => {
   }
 })
 
+Deno.test('live extra time and penalties keep the 90-minute score', () => {
+  for (const status of ['EXTRA_TIME', 'PENALTY_SHOOTOUT']) {
+    const f = one({ status }, status, [2, 1], [1, 1])
+    assertEquals([score(f), flags(f)], [[1, 1], [true, false, false]])
+  }
+})
+
 Deno.test('postponed, cancelled and awarded matches have no kickoff and no score', () => {
   for (const status of ['POSTPONED', 'CANCELLED', 'AWARDED']) {
     const f = one({ status }, 'REGULAR', [3, 0])

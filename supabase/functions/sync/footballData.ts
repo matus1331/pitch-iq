@@ -20,7 +20,7 @@ type Json = any
 
 const KNOCKOUT: Record<string, number> = { PLAYOFFS: 9, LAST_16: 10, QUARTER_FINALS: 11, SEMI_FINALS: 12, FINAL: 13 }
 const OFF = new Set(['POSTPONED', 'CANCELLED', 'AWARDED'])
-const RUNNING = new Set(['IN_PLAY', 'PAUSED', 'SUSPENDED', 'FINISHED'])
+const RUNNING = new Set(['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT', 'SUSPENDED', 'FINISHED'])
 
 function roundOf(m: Json): number | null {
   if (m.stage === 'LEAGUE_STAGE') return m.matchday >= 1 && m.matchday <= 8 ? m.matchday : null

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { Fixture, Profile } from '@/lib/data'
 import { errorText } from '@/lib/supabase'
-import { tipState } from '@/lib/tipState'
+import { scoreText, tipState } from '@/lib/tipState'
 import { EXACT_ONLY_FROM_GW } from '@shared/scoring.ts'
 
 export interface MatchTip {
@@ -80,9 +80,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, hg, ag, changed, state])
 
-  const score = state === 'scored' || fixture.started
-    ? `${fixture.team_h_score ?? 0} : ${fixture.team_a_score ?? 0}`
-    : 'vs'
+  const score = scoreText(fixture)
 
   return (
     <article id={`zapas-${fixture.id}`} className={`rounded-xl bg-white text-neutral-900 shadow-md ${highlight ? 'ring-4 ring-[var(--club-secondary)]' : ''}`}>

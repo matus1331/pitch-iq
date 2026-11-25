@@ -15,6 +15,9 @@ describe('clDefaultRound', () => {
   it('picks the first round with a match still to tip', () => {
     expect(clDefaultRound([f(6, later), f(5, past, true), f(5, soon)], now)).toBe(5)
   })
+  it('a postponed match with a new date does not pull players back to its old round', () => {
+    expect(clDefaultRound([f(3, '2027-01-28T20:00:00Z'), f(6, later)], now)).toBe(6)
+  })
   it('a postponed match does not hold the default on its round', () => {
     expect(clDefaultRound([f(3, null), f(6, later)], now)).toBe(6)
   })

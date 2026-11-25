@@ -68,6 +68,11 @@ end $$;
 create trigger cl_match_tips_guard before insert or update or delete on cl_match_tips
 for each row execute function cl_match_tips_guard();
 
+-- Explicit, so the tables do not depend on the project's default privileges; RLS below decides about rows.
+grant select on cl_teams, cl_fixtures to authenticated;
+grant select, insert, update, delete on cl_match_tips to authenticated;
+grant select, insert, update, delete on cl_teams, cl_fixtures, cl_match_tips to service_role;
+
 alter table cl_teams enable row level security;
 alter table cl_fixtures enable row level security;
 alter table cl_match_tips enable row level security;

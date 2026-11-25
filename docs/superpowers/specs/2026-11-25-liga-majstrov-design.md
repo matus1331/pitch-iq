@@ -70,7 +70,7 @@ Názvy stĺpcov kopírujú PL, aby karta zápasu a výpočty fungovali bez prekl
 - `index.ts` spustí LM samostatne: chyba jednej súťaže nezastaví druhú. Chyba LM sa zaloguje a vráti v odpovedi,
   HTTP stav ďalej určuje PL.
 - Zápas bez oboch známych tímov a kvalifikačné fázy sa vynechajú. Neznáma fáza sa vynechá a zaloguje.
-- Stav: `IN_PLAY`, `PAUSED`, `SUSPENDED`, `FINISHED` → `started`; `FINISHED` → `finished_provisional` aj `finished`;
+- Stav: `IN_PLAY`, `PAUSED`, `EXTRA_TIME`, `PENALTY_SHOOTOUT`, `SUSPENDED`, `FINISHED` → `started`; `FINISHED` → `finished_provisional` aj `finished`;
   `POSTPONED`, `CANCELLED`, `AWARDED` → `kickoff_time = null`, bez skóre.
 - Skóre: pri `duration = REGULAR` je to `fullTime`, inak `regularTime`. Ak `regularTime` chýba, zápas sa nevyhodnotí
   a zaloguje sa to. `fullTime` sa vtedy použiť nesmie, obsahuje predĺženie a penalty.
@@ -80,7 +80,7 @@ Názvy stĺpcov kopírujú PL, aby karta zápasu a výpočty fungovali bez prekl
 ### Web
 - Trasa `/liga-majstrov`, v menu „LM“ s ikonou pohára medzi Tabuľkami a Duelmi. Šírka pásika v `Shell.tsx` sa počíta
   z počtu položiek (dnes napevno pätina, v produkcii so štyrmi položkami preto nesedí).
-- Stránka má prepínač **Zápasy / Tabuľka**. Kolo sa vyberá zoznamom; predvolené je prvé s nezačatým zápasom.
+- Stránka má prepínač **Zápasy / Tabuľka**. Kolo sa vyberá zoznamom; predvolené je kolo najbližšieho nezačatého zápasu.
 - Z `Round.tsx` sa vyčlení zoznam zápasov s ukazovateľom „Natipované X z Y“, zo `Standings.tsx` tabuľka hráčov.
   Obe stránky potom používajú to isté. PL sa nesmie správať inak ako dnes.
 - `MatchTipCard` dostane zvonka uloženie tipu a erb. Starý režim 1/X/2 sa riadi číslom kola < 12 a pre LM musí byť

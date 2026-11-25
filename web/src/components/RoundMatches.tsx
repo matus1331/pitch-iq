@@ -28,7 +28,7 @@ export function RoundMatches({ round, postponed = [], tips, teamOf, profiles, us
     return () => clearInterval(t)
   }, [])
 
-  const open = round.filter((f) => f.kickoff_time && Date.parse(f.kickoff_time) > now)
+  const open = round.filter((f) => !f.started && f.kickoff_time && Date.parse(f.kickoff_time) > now)
   const mine = (f: Fixture) => tips.find((t) => t.fixture_id === f.id && t.user_id === userId)
   const tipped = open.filter(mine).length
   const nextKickoff = open.find((f) => !mine(f)) ?? open[0]

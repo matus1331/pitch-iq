@@ -6,9 +6,13 @@ export const FIRST_KNOCKOUT_ROUND = 9
 
 export const clRoundName = (gw: number) => KNOCKOUT[gw] ?? `${gw}. kolo`
 
-/** First round with a match that can still be tipped, else the last one. Postponed matches have no kickoff. */
+/**
+ * Round of the next match to tip, else the last round. By kickoff, not by round number: a postponed match that gets
+ * a new date months later must not pull everybody back to its old round.
+ */
 export function clDefaultRound(fixtures: Pick<Fixture, 'gameweek_id' | 'kickoff_time' | 'started'>[], now: number): number | undefined {
-  const rounds = (list: typeof fixtures) => list.map((f) => f.gameweek_id!).sort((a, b) => a - b)
-  const open = rounds(fixtures.filter((f) => f.kickoff_time && Date.parse(f.kickoff_time) > now && !f.started))
-  return open[0] ?? rounds(fixtures).at(-1)
+  const next = fixtures
+    .filter((f) => f.kickoff_time && Date.parse(f.kickoff_time) > now && !f.started)
+    .sort((a, b) => Date.parse(a.kickoff_time!) - Date.parse(b.kickoff_time!))[0]
+  return next?.gameweek_id ?? fixtures.map((f) => f.gameweek_id!).sort((a, b) => a - b).at(-1)
 }
