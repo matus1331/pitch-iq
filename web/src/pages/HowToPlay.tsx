@@ -73,6 +73,7 @@ export function HowToPlay() {
         <p><b>Duel o kolo:</b> kto v kole naberie viac IQ za tipy zápasov, berie stávku. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky. Duely o Môj klub pripravujeme.</p>
         <p><b>Duel o zápas:</b> súper prijme so svojím tipom na zápas a ty uvidíš len jeho stranu (1, X alebo 2), nikdy presné skóre. Potom si vyberieš jednu zo zvyšných strán (výhra aj prehra je celá stávka; ak padne tretí výsledok, nikto nič nezíska), alebo dvojtip bez jeho strany, ktorý vyhrá len polovicu stávky, ale prehrá celú. Alebo duel odmietneš, no zaráta sa ti medzi 3 zápasové duely kola a na ten zápas už toho hráča nevyzveš. Súper po prijatí môže meniť skóre, ale nie víťaza.</p>
         </>}
+        <p><b>Liga majstrov:</b> samostatná súťaž v záložke LM s vlastnou tabuľkou. Body sú rovnaké ako pri Premier League, vo vyraďovacej časti platí skóre po 90 minútach. IQ z Ligy majstrov sa do levelu ani do tabuliek Premier League neráta.</p>
         <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne: aj keď IQ po záporných bodoch zostavy klesne, level sa drží podľa najvyššieho dosiahnutého IQ. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
       </div>
       <div id="tabulka" className="scroll-mt-4 space-y-3 rounded-xl bg-white p-4 text-sm text-neutral-700 shadow-md">

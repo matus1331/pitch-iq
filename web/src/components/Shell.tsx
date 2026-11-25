@@ -1,4 +1,4 @@
-import { CalendarDays, ListOrdered, Shield, Swords, UserRound } from 'lucide-react'
+import { CalendarDays, ListOrdered, Shield, Swords, Trophy, UserRound } from 'lucide-react'
 import { flushSync } from 'react-dom'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { PushPrompt } from '@/components/PushPrompt'
@@ -11,6 +11,7 @@ const NAV = [
   { to: '/', label: 'Kolo', Icon: CalendarDays },
   { to: '/klub', label: 'Môj klub', Icon: Shield },
   { to: '/tabulky', label: 'Tabuľky', Icon: ListOrdered },
+  { to: '/liga-majstrov', label: 'LM', Icon: Trophy },
   { to: '/duely', label: 'Duely', Icon: Swords },
   { to: '/profil', label: 'Profil', Icon: UserRound },
 ].filter((n) => DUELS_ENABLED || n.to !== '/duely')
@@ -54,8 +55,8 @@ export function Shell({ profile }: { profile: Profile }) {
       <nav className="fixed inset-x-0 bottom-0 border-t border-white/15 pb-[env(safe-area-inset-bottom)] bg-[var(--club-primary)]/95 backdrop-blur">
         <ul className="relative mx-auto flex max-w-xl">
           {/* One bar for the whole menu: it glides to the active tab instead of jumping. */}
-          <li aria-hidden className={`pointer-events-none absolute top-0 left-0 h-1 w-1/5 transition-[transform,opacity] duration-[400ms] ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none ${here < 0 ? 'opacity-0' : ''}`}
-            style={{ transform: `translateX(${Math.max(here, 0) * 100}%)` }}>
+          <li aria-hidden className={`pointer-events-none absolute top-0 left-0 h-1 transition-[transform,opacity] duration-[400ms] ease-[cubic-bezier(0.34,1.4,0.5,1)] motion-reduce:transition-none ${here < 0 ? 'opacity-0' : ''}`}
+            style={{ width: `${100 / NAV.length}%`, transform: `translateX(${Math.max(here, 0) * 100}%)` }}>
             <span className="absolute inset-x-3 top-0 h-1 rounded-b-full bg-[var(--club-secondary)]" />
           </li>
           {NAV.map((n, i) => (

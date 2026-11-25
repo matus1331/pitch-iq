@@ -89,11 +89,11 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-4">
         <div className="flex items-center gap-2">
           {home.badge && <img src={home.badge} alt="" className="size-8" />}
-          <span className="font-semibold">{home.name}</span>
+          <span className="min-w-0 font-semibold wrap-break-word">{home.name}</span>
         </div>
         <span className="scoreboard text-2xl">{score}</span>
         <div className="flex items-center justify-end gap-2 text-right">
-          <span className="font-semibold">{away.name}</span>
+          <span className="min-w-0 font-semibold wrap-break-word">{away.name}</span>
           {away.badge && <img src={away.badge} alt="" className="size-8" />}
         </div>
       </header>

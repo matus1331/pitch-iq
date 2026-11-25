@@ -3,6 +3,7 @@ import { Shell } from '@/components/Shell'
 import { PageSkeleton } from '@/components/Skeleton'
 import { Toaster } from '@/components/ui/sonner'
 import { useMyProfile, useSession, useTeams } from '@/lib/data'
+import { ChampionsLeague } from '@/pages/ChampionsLeague'
 import { ChooseClub } from '@/pages/ChooseClub'
 import { ClubMatch } from '@/pages/ClubMatch'
 import { ClubSquad } from '@/pages/ClubSquad'
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="klub" element={<ClubMatch profile={profile.data} />} />
           <Route path="klub/kader" element={<ClubSquad profile={profile.data} />} />
           <Route path="tabulky" element={<Standings />} />
+          <Route path="liga-majstrov" element={<ChampionsLeague />} />
           {DUELS_ENABLED && <Route path="duely" element={<DuelsPage />} />}
           <Route path="pravidla" element={<HowToPlay />} />
           <Route path="profil" element={<Profile profile={profile.data} club={club} />} />
