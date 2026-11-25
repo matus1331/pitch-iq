@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { badgeUrl } from '@/lib/clubColors'
-import type { Fixture, Profile, Team } from '@/lib/data'
-import { errorText, supabase } from '@/lib/supabase'
+import type { Fixture, Profile } from '@/lib/data'
+import { errorText } from '@/lib/supabase'
 import { tipState } from '@/lib/tipState'
 import { EXACT_ONLY_FROM_GW } from '@shared/scoring.ts'
 
@@ -18,6 +17,12 @@ export interface MatchTip {
   is_final: boolean
 }
 
+export type TipInput = Pick<MatchTip, 'kind' | 'outcome' | 'home_goals' | 'away_goals'>
+/** Saving is the page's business: each competition has its own tips table. */
+export type SaveTip = (fixtureId: number, tip: TipInput) => PromiseLike<{ error: unknown }>
+/** A team as the card shows it; `badge` is an image URL, null when the team has none. */
+export interface CardTeam { name: string; short_name: string; badge: string | null }
+
 const OUTCOME_LABEL = { H: '1', D: 'X', A: '2' } as const
 
 export function tipLabel(t: MatchTip) {
@@ -26,20 +31,23 @@ export function tipLabel(t: MatchTip) {
 
 const kickoffFmt = new Intl.DateTimeFormat('sk-SK', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-export function MatchTipCard({ fixture, home, away, myTip, others, profiles, userId, onSaved, highlight }: {
+export function MatchTipCard({ fixture, home, away, myTip, others, profiles, userId, save: saveTip, onSaved, highlight, exactOnly }: {
   fixture: Fixture
   highlight?: boolean
-  home: Team
-  away: Team
+  /** Never offer or explain 1/X/2 tips, whatever the round number. */
+  exactOnly?: boolean
+  home: CardTeam
+  away: CardTeam
   myTip: MatchTip | undefined
   others: MatchTip[]
   profiles: Map<string, Profile>
   userId: string
+  save: SaveTip
   onSaved: () => void
 }) {
   const state = tipState(fixture)
   // Rounds before EXACT_ONLY_FROM_GW still offer the 1/X/2 tab.
-  const legacy = (fixture.gameweek_id ?? 0) < EXACT_ONLY_FROM_GW
+  const legacy = !exactOnly && (fixture.gameweek_id ?? 0) < EXACT_ONLY_FROM_GW
   const [mode, setMode] = useState<'1x2' | 'exact'>(legacy ? myTip?.kind ?? '1x2' : 'exact')
   const [h, setH] = useState(myTip?.home_goals?.toString() ?? '')
   const [a, setA] = useState(myTip?.away_goals?.toString() ?? '')
@@ -53,11 +61,9 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
     setA(String(savedA))
   }, [savedH, savedA])
 
-  async function save(tip: Partial<MatchTip>) {
+  async function save(tip: Partial<TipInput> & Pick<TipInput, 'kind'>) {
     setError(null)
-    const { error } = await supabase.from('match_tips').upsert({
-      user_id: userId, fixture_id: fixture.id, outcome: null, home_goals: null, away_goals: null, ...tip,
-    })
+    const { error } = await saveTip(fixture.id, { outcome: null, home_goals: null, away_goals: null, ...tip })
     if (error) return setError(errorText(error))
     toast.success(`Tip uložený: ${home.short_name} – ${away.short_name}`, { id: `tip-${fixture.id}` })
     onSaved()
@@ -82,13 +88,13 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
     <article id={`zapas-${fixture.id}`} className={`rounded-xl bg-white text-neutral-900 shadow-md ${highlight ? 'ring-4 ring-[var(--club-secondary)]' : ''}`}>
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-4">
         <div className="flex items-center gap-2">
-          <img src={badgeUrl(home.code)} alt="" className="size-8" />
+          {home.badge && <img src={home.badge} alt="" className="size-8" />}
           <span className="font-semibold">{home.name}</span>
         </div>
         <span className="scoreboard text-2xl">{score}</span>
         <div className="flex items-center justify-end gap-2 text-right">
           <span className="font-semibold">{away.name}</span>
-          <img src={badgeUrl(away.code)} alt="" className="size-8" />
+          {away.badge && <img src={away.badge} alt="" className="size-8" />}
         </div>
       </header>
       <p className="px-4 pt-1 text-center text-xs text-neutral-500">
@@ -155,7 +161,7 @@ export function MatchTipCard({ fixture, home, away, myTip, others, profiles, use
               {!myTip && <li className="py-1.5 text-neutral-500">Tento zápas si netipoval.</li>}
             </ul>
             <p className="mt-2 border-t border-neutral-100 pt-2 text-xs leading-relaxed text-neutral-500">
-              Tip: 1 = výhra {home.short_name}, X = remíza, 2 = výhra {away.short_name}, číslo ako 2:1 = presný výsledok.
+              {!exactOnly && <>Tip: 1 = výhra {home.short_name}, X = remíza, 2 = výhra {away.short_name}, číslo ako 2:1 = presný výsledok.{' '}</>}
               IQ = body za tip: 3 za správneho víťaza alebo remízu, ďalšie 3 za presný výsledok
               {state === 'locked' ? '. Body pribudnú po skončení zápasu.' : '.'}
             </p>
