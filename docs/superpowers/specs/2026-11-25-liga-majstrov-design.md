@@ -59,7 +59,7 @@ Názvy stĺpcov kopírujú PL, aby karta zápasu a výpočty fungovali bez prekl
   zamknutého zápasu. Zamknutý je bez výkopu, po výkope **alebo** so `started = true` (rozvrh môže byť oneskorený).
   Chyby `TIP_LOCKED` a `TIP_FIXTURE_IMMUTABLE` už web pozná.
 - RLS zapnuté: tímy a zápasy číta každý prihlásený. Tip číta vlastník, alebo člen (`is_member()`), keď je zápas
-  zamknutý výkopom alebo `started` (to isté pravidlo ako zámok). Zapisuje
+  po výkope alebo `started`. Odložený zápas je zamknutý, ale tipy ostávajú skryté do nového výkopu. Zapisuje
   len vlastník. Funkcie majú pevný `search_path` a odobraté práva ako v `0010`.
 
 ### Synchronizácia
