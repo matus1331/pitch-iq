@@ -1,6 +1,6 @@
-import { CalendarDays, ListOrdered, Shield, Swords, Trophy, UserRound } from 'lucide-react'
+import { Crown, ListOrdered, Swords, Trophy, UserRound } from 'lucide-react'
 import { flushSync } from 'react-dom'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { PushPrompt } from '@/components/PushPrompt'
 import { type Profile, useDuels, useIqRows } from '@/lib/data'
 import { levelFor } from '@shared/level.ts'
@@ -8,10 +8,9 @@ import { DUELS_ENABLED } from '@/lib/features'
 import { iqSummary } from '@/lib/standings'
 
 const NAV = [
-  { to: '/', label: 'Kolo', Icon: CalendarDays },
-  { to: '/klub', label: 'Môj klub', Icon: Shield },
-  { to: '/tabulky', label: 'Tabuľky', Icon: ListOrdered },
+  { to: '/', label: 'PL', Icon: Crown },
   { to: '/liga-majstrov', label: 'LM', Icon: Trophy },
+  { to: '/tabulky', label: 'Tabuľky', Icon: ListOrdered },
   { to: '/duely', label: 'Duely', Icon: Swords },
   { to: '/profil', label: 'Profil', Icon: UserRound },
 ].filter((n) => DUELS_ENABLED || n.to !== '/duely')
@@ -22,7 +21,9 @@ export function Shell({ profile }: { profile: Profile }) {
   const lv = iq.data && levelFor(iqSummary(iq.data.individual, iq.data.club, profile.id).peak)
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const here = NAV.findIndex((n) => n.to === pathname)
+  // Môj klub lives under PL (pages/PremierLeague.tsx).
+  const section = pathname === '/klub' || pathname.startsWith('/klub/') ? '/' : pathname
+  const here = NAV.findIndex((n) => n.to === section)
   const canMorph = typeof document !== 'undefined' && !!document.startViewTransition
   // Tab change: the old page slides out and the new one in, towards the tapped tab (see index.css).
   // Without view transitions the new page still slides in (.page-enter); modified clicks stay plain links.
@@ -48,7 +49,7 @@ export function Shell({ profile }: { profile: Profile }) {
       </header>
       <PushPrompt />
       <main className="page flex-1 px-3 pb-24">
-        <div key={pathname} className={canMorph ? '' : 'page-enter'}>
+        <div key={section} className={canMorph ? '' : 'page-enter'}>
           <Outlet />
         </div>
       </main>
@@ -61,26 +62,21 @@ export function Shell({ profile }: { profile: Profile }) {
           </li>
           {NAV.map((n, i) => (
             <li key={n.to} className="flex-1">
-              <NavLink
+              <Link
                 to={n.to}
-                end
+                aria-current={i === here ? 'page' : undefined}
                 onClick={(e) => go(e, n.to, i)}
-                className={({ isActive }) =>
-                  `relative flex flex-col items-center gap-0.5 pt-2.5 pb-2 text-xs focus-visible:outline-2 ${isActive ? 'font-bold' : 'font-medium'}`}
+                className={`relative flex flex-col items-center gap-0.5 pt-2.5 pb-2 text-xs focus-visible:outline-2 ${i === here ? 'font-bold' : 'font-medium'}`}
               >
-                {({ isActive }) => (
-                  <>
-                    <span className="relative">
-                      <n.Icon className={`size-6 transition-transform duration-300 ${isActive ? 'nav-pop scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 1.75} aria-hidden />
-                      {n.to === '/duely' && challenged && (
-                        <span className="absolute -top-0.5 -right-1.5 size-2.5 rounded-full bg-[var(--club-secondary)] ring-2 ring-[var(--club-primary)]" />
-                      )}
-                    </span>
-                    {n.label}
-                    {n.to === '/duely' && challenged && <span className="sr-only">, máš výzvu na duel</span>}
-                  </>
-                )}
-              </NavLink>
+                <span className="relative">
+                  <n.Icon className={`size-6 transition-transform duration-300 ${i === here ? 'nav-pop scale-110' : ''}`} strokeWidth={i === here ? 2.5 : 1.75} aria-hidden />
+                  {n.to === '/duely' && challenged && (
+                    <span className="absolute -top-0.5 -right-1.5 size-2.5 rounded-full bg-[var(--club-secondary)] ring-2 ring-[var(--club-primary)]" />
+                  )}
+                </span>
+                {n.label}
+                {n.to === '/duely' && challenged && <span className="sr-only">, máš výzvu na duel</span>}
+              </Link>
             </li>
           ))}
         </ul>

@@ -12,6 +12,7 @@ import { DUELS_ENABLED } from '@/lib/features'
 import { HowToPlay } from '@/pages/HowToPlay'
 import { Login } from '@/pages/Login'
 import { Onboarding } from '@/pages/Onboarding'
+import { PremierLeague } from '@/pages/PremierLeague'
 import { Profile } from '@/pages/Profile'
 import { Round } from '@/pages/Round'
 import { Standings } from '@/pages/Standings'
@@ -32,11 +33,13 @@ export default function App() {
     content = (
       <Routes>
         <Route element={<Shell profile={profile.data} />}>
-          <Route index element={<Round />} />
-          <Route path="klub" element={<ClubMatch profile={profile.data} />} />
-          <Route path="klub/kader" element={<ClubSquad profile={profile.data} />} />
-          <Route path="tabulky" element={<Standings />} />
+          <Route element={<PremierLeague />}>
+            <Route index element={<Round />} />
+            <Route path="klub" element={<ClubMatch profile={profile.data} />} />
+            <Route path="klub/kader" element={<ClubSquad profile={profile.data} />} />
+          </Route>
           <Route path="liga-majstrov" element={<ChampionsLeague />} />
+          <Route path="tabulky" element={<Standings />} />
           {DUELS_ENABLED && <Route path="duely" element={<DuelsPage />} />}
           <Route path="pravidla" element={<HowToPlay />} />
           <Route path="profil" element={<Profile profile={profile.data} club={club} />} />

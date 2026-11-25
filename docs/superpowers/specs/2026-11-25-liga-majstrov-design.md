@@ -78,9 +78,12 @@ Názvy stĺpcov kopírujú PL, aby karta zápasu a výpočty fungovali bez prekl
   bez bodov, takže oprava skóre aj výpadok synchronizácie sa doženú. Tip na nedohraný zápas má `points = null`.
 
 ### Web
-- Trasa `/liga-majstrov`, v menu „LM“ s ikonou pohára medzi Tabuľkami a Duelmi. Šírka pásika v `Shell.tsx` sa počíta
-  z počtu položiek (dnes napevno pätina, v produkcii so štyrmi položkami preto nesedí).
-- Stránka má prepínač **Zápasy / Tabuľka**. Kolo sa vyberá zoznamom; predvolené je kolo najbližšieho nezačatého zápasu.
+- **[zadanie, zmena po prvej verzii]** Spodné menu: **PL** (prepínač Kolo / Môj klub hore na stránke), **LM**, Tabuľky,
+  Duely, Profil. Stránka LM má len zápasy a vyzerá ako Kolo PL: nadpis kola a dve tlačidlá, práve hrané (alebo posledné)
+  kolo a ďalšie. Tabuľky majú taby Premier League, Môj klub, Liga majstrov.
+- Kolá LM sa posúvajú len dopredu: „práve hrané“ je najvyššie kolo so začatým zápasom, „ďalšie“ najbližšie vyššie.
+  Odložený alebo preložený nedohraný zápas starého kola je v časti „Odložené zápasy“ a dá sa tipovať, ak má termín.
+- Trasa `/liga-majstrov`. Šírka pásika v `Shell.tsx` sa počíta z počtu položiek.
 - Z `Round.tsx` sa vyčlení zoznam zápasov s ukazovateľom „Natipované X z Y“, zo `Standings.tsx` tabuľka hráčov.
   Obe stránky potom používajú to isté. PL sa nesmie správať inak ako dnes.
 - `MatchTipCard` dostane zvonka uloženie tipu a erb. Starý režim 1/X/2 sa riadi číslom kola < 12 a pre LM musí byť

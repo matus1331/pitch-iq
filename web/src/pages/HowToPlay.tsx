@@ -7,7 +7,7 @@ import { DUELS_ENABLED } from '@/lib/features'
 
 const STEPS = [
   { title: 'Tipuj zápasy kola', text: 'Pri každom zápase tipni presný výsledok. Za správneho víťaza alebo remízu dostaneš 3 IQ, za presné skóre ďalšie 3 IQ, spolu 6. Tip 2:2 pri výsledku 0:0 teda dá 3 IQ. Tip môžeš meniť až do výkopu.' },
-  { title: 'Tipy a zostava pre svoj klub', text: 'V záložke Môj klub si ku každému zápasu vyberieš až tri tipy, napríklad kto dá gól, a zostavíš päť hráčov. Body sú za tipy, ktoré vyjdú, a za výkony tvojich hráčov.' },
+  { title: 'Tipy a zostava pre svoj klub', text: 'V záložke PL v časti Môj klub si ku každému zápasu vyberieš až tri tipy, napríklad kto dá gól, a zostavíš päť hráčov. Body sú za tipy, ktoré vyjdú, a za výkony tvojich hráčov.' },
   DUELS_ENABLED
     ? { title: 'Zbieraj IQ a vyzývaj kamošov', text: 'Za IQ stúpaš v leveloch. V záložke Duely vyzveš kamoša o Rešpekt: na celé kolo alebo na jeden zápas.' }
     : { title: 'Zbieraj IQ', text: 'Za IQ stúpaš v leveloch a v tabuľkách sa porovnáš s kamošmi.' },
@@ -73,12 +73,12 @@ export function HowToPlay() {
         <p><b>Duel o kolo:</b> kto v kole naberie viac IQ za tipy zápasov, berie stávku. Súper musí výzvu prijať pred začiatkom kola. Ak vyhrá hráč s nižším levelom, dostane navyše polovicu stávky. Duely o Môj klub pripravujeme.</p>
         <p><b>Duel o zápas:</b> súper prijme so svojím tipom na zápas a ty uvidíš len jeho stranu (1, X alebo 2), nikdy presné skóre. Potom si vyberieš jednu zo zvyšných strán (výhra aj prehra je celá stávka; ak padne tretí výsledok, nikto nič nezíska), alebo dvojtip bez jeho strany, ktorý vyhrá len polovicu stávky, ale prehrá celú. Alebo duel odmietneš, no zaráta sa ti medzi 3 zápasové duely kola a na ten zápas už toho hráča nevyzveš. Súper po prijatí môže meniť skóre, ale nie víťaza.</p>
         </>}
-        <p><b>Liga majstrov:</b> samostatná súťaž v záložke LM s vlastnou tabuľkou. Body sú rovnaké ako pri Premier League, vo vyraďovacej časti platí skóre po 90 minútach. IQ z Ligy majstrov sa do levelu ani do tabuliek Premier League neráta.</p>
+        <p><b>Liga majstrov:</b> samostatná súťaž v záložke LM, vlastnú tabuľku má v záložke Tabuľky. Body sú rovnaké ako pri Premier League, vo vyraďovacej časti platí skóre po 90 minútach. IQ z Ligy majstrov sa do levelu ani do tabuliek Premier League neráta.</p>
         <p><b>Levely:</b> od 1 po {MAX_LEVEL}. Level nikdy neklesne: aj keď IQ po záporných bodoch zostavy klesne, level sa drží podľa najvyššieho dosiahnutého IQ. Nový titul dostaneš každých 5 levelov: {TITLES.map((t) => t.title).join(', ')}.</p>
       </div>
       <div id="tabulka" className="scroll-mt-4 space-y-3 rounded-xl bg-white p-4 text-sm text-neutral-700 shadow-md">
         <h2 className="text-base font-semibold text-neutral-900">Čo je v tabuľke</h2>
-        <p>V záložke Zápasy je pri každom hráčovi rozpis jeho tipov na výsledky zápasov. V záložke Môj klub sú body za klubové tipy a zostavu spolu, pri hráčovi vidíš aj „z toho zostava“.</p>
+        <p>V tabuľkách Premier League a Liga majstrov je pri každom hráčovi rozpis jeho tipov na výsledky zápasov. V tabuľke Môj klub sú body za klubové tipy a zostavu spolu, pri hráčovi vidíš aj „z toho zostava“.</p>
         <ul className="space-y-1.5">
           <li><b>🎯 Presný výsledok:</b> koľkokrát trafil skóre presne (6 IQ).</li>
           <li><b>✓ Správny víťaz alebo remíza:</b> správny výsledok zápasu, ale skóre nesedelo (3 IQ).</li>

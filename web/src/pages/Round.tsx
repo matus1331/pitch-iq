@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CardsSkeleton } from '@/components/Skeleton'
 import type { MatchTip } from '@/components/MatchTipCard'
+import { RoundHeader } from '@/components/RoundHeader'
 import { RoundMatches } from '@/components/RoundMatches'
 import { badgeUrl } from '@/lib/clubColors'
 import { type Fixture, useGameweeks, useProfiles, useSession, useTeams } from '@/lib/data'
@@ -53,22 +54,7 @@ export function Round() {
     .reduce((s, t) => s + (t.points ?? 0), 0)
   return (
     <section>
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-4xl leading-none">{gw ? `${gw}. kolo` : 'Kolo'}</h1>
-          <p>Tvoje IQ v tomto kole: <b>{total}</b></p>
-        </div>
-        {options.length > 1 && (
-          <div className="flex gap-1 rounded-lg bg-black/20 p-1 text-sm">
-            {options.map((o) => (
-              <button key={o} onClick={() => setPicked(o)} aria-pressed={o === gw}
-                className={`rounded-md px-3 py-1 font-semibold ${o === gw ? 'bg-white text-neutral-900' : ''}`}>
-                {o}. kolo
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <RoundHeader gw={gw} total={total} options={options} nameOf={(o) => `${o}. kolo`} onPick={setPicked} />
       <WelcomeCard userId={userId} />
       {fixtures.isLoading && <CardsSkeleton />}
       {fixtures.data?.length === 0 && <p>Pre toto kolo zatiaľ nie sú zápasy.</p>}
