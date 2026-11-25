@@ -112,7 +112,7 @@ Vrátenie vráti zápasy na skutočné dáta FPL a zmaže body zo všetkých zá
    ```
 
    ```bash
-   npx supabase db push
+   npx supabase db push --remote
    ```
 
 3. V SQL editore nastav pozývací kód a dve tajné hodnoty pre plánovač:
