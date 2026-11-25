@@ -91,12 +91,18 @@ Názvy stĺpcov kopírujú PL, aby karta zápasu a výpočty fungovali bez prekl
 - „Ako hrať“: krátka časť o LM (pravidlá vyššie). Na stránke LM dole „Dáta: football-data.org“.
 - README: secret `FOOTBALL_DATA_KEY` a kde ho získať.
 
-## Overiť s kľúčom hneď na začiatku
-Dokumentáciu som čítal, živé dáta bez kľúča nie. Kľúč si registruje zadávateľ. Pred stavbou treba potvrdiť:
-1. free plán vráti celú sezónu 2026/27 vrátane 5. kola,
-2. presné názvy fáz (`stage`), kľúčov tímov a erbov; hosť erbov pre CSP,
-3. `regularTime` pri zápase s predĺžením (minulá sezóna),
-4. oneskorenie skóre. Ak je viac ako približne 3 hodiny alebo dáta chýbajú, vrátiť sa k výberu zdroja.
+## Overené s kľúčom (25. 11. 2026)
+1. Free plán vracia sezónu 2026/27: 144 zápasov ligovej fázy, z toho 81 dohraných, vrátane 9 zápasov zo 24. 11.
+   Vyraďovacie zápasy pribudnú po žrebe (minulá sezóna ich mala všetky, spolu 189).
+2. `stage`: `LEAGUE_STAGE`, `PLAYOFFS`, `LAST_16`, `QUARTER_FINALS`, `SEMI_FINALS`, `FINAL`. `matchday` je v ligovej fáze
+   číslo kola 1 – 8, vo vyraďovacej poradie zápasu 1 – 2 a vo finále `null`. Kvalifikácia v odpovedi nie je.
+3. Tímy: `homeTeam`/`awayTeam` s `id`, `name`, `shortName`, `tla`, `crest`; erby sú z `crests.football-data.org`.
+   `tla` **nie je jedinečné** (FCB je Barcelona aj Bayern), `short_name` sa preto plní zo `shortName`.
+4. Predĺženie a penalty: `regularTime` je vyplnené a `fullTime` obsahuje aj penalty (finále 2026: 5:4 oproti 1:1 po 90 min).
+5. Všetkých 81 skóre aj výkopy sedia s UEFA.
+
+**Neoverené: oneskorenie skóre.** Zápasy zo 24. 11. mali poslednú úpravu o 00:20 UTC, o 05:53 UTC bolo
+všetko hotové. Presné oneskorenie sa zmeria pri živom kole; ak je viac ako približne 3 hodiny, vrátiť sa k výberu zdroja.
 
 ## Testy
 - Deno, preklad odpovede: ligový zápas, predĺženie a penalty (90 minút), chýbajúce `regularTime`, odložený, kontumovaný, neznámy
