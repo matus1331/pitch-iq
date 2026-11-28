@@ -63,6 +63,26 @@ export function dueNotices(
   return out
 }
 
+export interface DuelNotice {
+  /** Who gets the push. */
+  to: string
+  kind: 'challenge' | 'accepted' | 'declined'
+  /** Nickname of the other player. */
+  who: string
+  stake: number
+  category: string
+  gameweek_id: number
+  /** "EVE – ARS" for a match duel. */
+  match: string | null
+}
+
+/** A new challenge goes to the challenged player, the answer back to the challenger. */
+export function duelMessage(n: DuelNotice) {
+  const title = { challenge: `${n.who} ťa vyzýva na duel`, accepted: `${n.who} prijal tvoj duel`, declined: `${n.who} odmietol tvoj duel` }[n.kind]
+  const body = n.category === 'match' ? `O ${n.stake} R · zápas ${n.match ?? ''}`.trim() : `O ${n.stake} R · celé ${n.gameweek_id}. kolo`
+  return { title, body, url: '/duely' }
+}
+
 function must<T>(r: { data: T | null; error: unknown }): T {
   if (r.error) throw r.error
   return (r.data ?? []) as T
@@ -90,14 +110,67 @@ async function injuredLineups(db: SupabaseClient, users: string[], fixtures: Not
   return out
 }
 
-/** Sends due round notifications. No-op without VAPID keys (local dev, tests). */
+type Sub = { endpoint: string; user_id: string; p256dh: string; auth: string }
+
+/** Pushes one message to every device of the user; returns how many went out. */
+async function push(db: SupabaseClient, subs: Sub[], user: string, msg: { title: string; body: string; url: string }) {
+  let count = 0
+  for (const s of subs.filter((s) => s.user_id === user)) {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(msg), { TTL: 6 * 3600 })
+      count++
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode
+      // Gone: the user turned notifications off or reinstalled the app.
+      if (status === 404 || status === 410) await db.from('push_subscriptions').delete().eq('endpoint', s.endpoint)
+      else console.error('push failed', status, e)
+    }
+  }
+  return count
+}
+
+/**
+ * Duel events not announced yet: new challenges still waiting for an answer, and answers to challenges.
+ * Each is claimed (its flag set) before sending, so a parallel sync run does not announce it again.
+ */
+async function duelNotices(db: SupabaseClient): Promise<DuelNotice[]> {
+  type Row = { challenger_id: string; opponent_id: string; status: string; stake: number; category: string; gameweek_id: number; fixture_id: number | null }
+  const cols = 'challenger_id, opponent_id, status, stake, category, gameweek_id, fixture_id'
+  const challenges: Row[] = must(await db.from('duels').update({ challenge_notified: true })
+    .eq('status', 'pending').eq('challenge_notified', false).select(cols))
+  const answers: Row[] = must(await db.from('duels').update({ answer_notified: true })
+    .in('status', ['accepted', 'declined']).eq('answer_notified', false).select(cols))
+  const rows = [...challenges, ...answers]
+  if (!rows.length) return []
+  const names: { id: string; nickname: string }[] =
+    must(await db.from('profiles').select('id, nickname').in('id', rows.flatMap((d) => [d.challenger_id, d.opponent_id])))
+  const fixtureIds = rows.map((d) => d.fixture_id).filter((x): x is number => x != null)
+  const fixtures: { id: number; team_h: number; team_a: number }[] = fixtureIds.length
+    ? must(await db.from('fixtures').select('id, team_h, team_a').in('id', fixtureIds)) : []
+  const teams: { id: number; short_name: string }[] = fixtures.length
+    ? must(await db.from('teams').select('id, short_name').in('id', fixtures.flatMap((f) => [f.team_h, f.team_a]))) : []
+  const team = (id: number) => teams.find((t) => t.id === id)?.short_name ?? '?'
+  const nick = (id: string) => names.find((n) => n.id === id)?.nickname ?? 'Niekto'
+  return rows.map((d) => {
+    const f = fixtures.find((x) => x.id === d.fixture_id)
+    const pending = d.status === 'pending'
+    return {
+      to: pending ? d.opponent_id : d.challenger_id,
+      who: nick(pending ? d.challenger_id : d.opponent_id),
+      kind: pending ? 'challenge' : d.status as 'accepted' | 'declined',
+      stake: d.stake, category: d.category, gameweek_id: d.gameweek_id,
+      match: f ? `${team(f.team_h)} – ${team(f.team_a)}` : null,
+    }
+  })
+}
+
+/** Sends due round notifications and duel challenges and answers. No-op without VAPID keys (local dev, tests). */
 export async function runNotify(db: SupabaseClient): Promise<{ sent: number }> {
   const pub = Deno.env.get('VAPID_PUBLIC_KEY'), priv = Deno.env.get('VAPID_PRIVATE_KEY')
   if (!pub || !priv) return { sent: 0 }
   webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com', pub, priv)
 
-  const subs: { endpoint: string; user_id: string; p256dh: string; auth: string }[] =
-    must(await db.from('push_subscriptions').select('endpoint, user_id, p256dh, auth'))
+  const subs: Sub[] = must(await db.from('push_subscriptions').select('endpoint, user_id, p256dh, auth'))
   const fixtures: NotifyFixture[] = must(await db.from('fixtures').select('id, gameweek_id, kickoff_time, started, finished'))
   const sentRows: { gameweek_id: number; kind: string }[] = must(await db.from('notifications_sent').select('gameweek_id, kind'))
   const sent = new Set(sentRows.map((r) => `${r.gameweek_id}:${r.kind}`))
@@ -116,6 +189,8 @@ export async function runNotify(db: SupabaseClient): Promise<{ sent: number }> {
     : new Set<string>()
 
   let count = 0
+  // ponytail: duel events wait for the next sync run (up to 10 min); a DB webhook would make them instant.
+  for (const n of await duelNotices(db)) count += await push(db, subs, n.to, duelMessage(n))
   for (const n of dueNotices(fixtures, tips, users, sent, now, lineupAlerts)) {
     // Claim first: a parallel sync run must not send the same notification twice.
     // ponytail: no retry, a device whose push service is down at that moment misses this one.
@@ -123,19 +198,7 @@ export async function runNotify(db: SupabaseClient): Promise<{ sent: number }> {
       .upsert({ gameweek_id: n.gameweek, kind: n.kind }, { onConflict: 'gameweek_id,kind', ignoreDuplicates: true })
       .select())
     if (!(claimed as unknown[]).length) continue
-    for (const s of subs) {
-      const msg = n.messages.get(s.user_id)
-      if (!msg) continue
-      try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(msg), { TTL: 6 * 3600 })
-        count++
-      } catch (e) {
-        const status = (e as { statusCode?: number }).statusCode
-        // Gone: the user turned notifications off or reinstalled the app.
-        if (status === 404 || status === 410) await db.from('push_subscriptions').delete().eq('endpoint', s.endpoint)
-        else console.error('push failed', status, e)
-      }
-    }
+    for (const [user, msg] of n.messages) count += await push(db, subs, user, msg)
   }
   return { sent: count }
 }

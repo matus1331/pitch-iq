@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import { dueNotices, type NotifyFixture } from './notify.ts'
+import { dueNotices, duelMessage, type NotifyFixture } from './notify.ts'
 
 const now = Date.parse('2026-11-20T12:00:00Z')
 const at = (h: number) => new Date(now + h * 3600e3).toISOString()
@@ -38,4 +38,13 @@ Deno.test('reminder warns about an injured lineup player', () => {
   assertEquals(m.get('b')!.body, 'Ešte nemáš natipované 2 zápasy. V zostave máš zraneného hráča.')
   assertEquals(m.get('b')!.url, '/')
   assertEquals(m.get('c')!.body, 'Ešte nemáš natipované 2 zápasy.')
+})
+
+Deno.test('duel pushes name the other player, the stake and what the duel is about', () => {
+  const base = { to: 'b', who: 'matty', stake: 10, gameweek_id: 13 }
+  assertEquals(duelMessage({ ...base, kind: 'challenge', category: 'match', match: 'EVE – ARS' }),
+    { title: 'matty ťa vyzýva na duel', body: 'O 10 R · zápas EVE – ARS', url: '/duely' })
+  assertEquals(duelMessage({ ...base, kind: 'challenge', category: 'individual', match: null }).body, 'O 10 R · celé 13. kolo')
+  assertEquals(duelMessage({ ...base, kind: 'accepted', category: 'individual', match: null }).title, 'matty prijal tvoj duel')
+  assertEquals(duelMessage({ ...base, kind: 'declined', category: 'individual', match: null }).title, 'matty odmietol tvoj duel')
 })
