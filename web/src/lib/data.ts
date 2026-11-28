@@ -94,8 +94,8 @@ export const useTipResults = () =>
 
 /** Round duels compare result tips ('individual') or club tips ('club', switched off for now); 'match' is one match. */
 export type DuelCategory = 'individual' | 'club' | 'match'
-/** H home win, D draw, A away win; the challenger may also take a double chance (HD, DA, HA). */
-export type DuelPick = 'H' | 'D' | 'A' | 'HD' | 'DA' | 'HA'
+/** A match duel pick: H home win, D draw, A away win, or a double chance HD (1X) / DA (X2). */
+export type DuelPick = 'H' | 'HD' | 'D' | 'DA' | 'A'
 
 export interface Duel {
   id: number
@@ -106,8 +106,8 @@ export interface Duel {
   opponent_id: string
   stake: number
   status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'withdrawn' | 'finished'
-  opponent_pick: 'H' | 'D' | 'A' | null
-  challenger_pick: DuelPick | null
+  /** Match duels: my own pick, and the opponent's once the match has kicked off (RLS hides it before). */
+  duel_picks: { user_id: string; pick: DuelPick }[]
   challenger_iq: number | null
   opponent_iq: number | null
   challenger_delta: number | null
@@ -117,7 +117,7 @@ export interface Duel {
 export const useDuels = () =>
   useQuery({
     queryKey: ['duels'],
-    queryFn: async () => must(await supabase.from('duels').select('*').order('created_at')) as Duel[],
+    queryFn: async () => must(await supabase.from('duels').select('*, duel_picks(user_id, pick)').order('created_at')) as Duel[],
   })
 
 /** Everyone's Rešpekt (the duel currency): balance and how much of it is riding on open duels. */

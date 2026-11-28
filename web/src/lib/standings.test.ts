@@ -56,7 +56,7 @@ describe('iqSummary', () => {
 })
 
 const duel = (gameweek_id: number, challenger_id: string, opponent_id: string, challenger_delta: number, opponent_delta: number, status: Duel['status'] = 'finished'): Duel =>
-  ({ id: gameweek_id, category: 'individual', gameweek_id, fixture_id: null, opponent_pick: null, challenger_pick: null, challenger_id, opponent_id, stake: 10, status, challenger_iq: 0, opponent_iq: 0, challenger_delta, opponent_delta })
+  ({ id: gameweek_id, category: 'individual', gameweek_id, fixture_id: null, duel_picks: [], challenger_id, opponent_id, stake: 10, status, challenger_iq: 0, opponent_iq: 0, challenger_delta, opponent_delta })
 
 describe('duelRecord', () => {
   it('counts wins, draws, losses, net Rešpekt and the best win streak in round order', () => {

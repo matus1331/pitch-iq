@@ -34,9 +34,8 @@ export function Shell({ profile }: { profile: Profile }) {
     e.preventDefault()
     document.startViewTransition(() => flushSync(() => { navigate(to); window.scrollTo(0, 0) }))
   }
-  // A challenge to answer, or a match duel waiting for my side.
-  const challenged = DUELS_ENABLED && duels.data?.some((d) => (d.status === 'pending' && d.opponent_id === profile.id)
-    || (d.status === 'accepted' && d.category === 'match' && d.challenger_id === profile.id && !d.challenger_pick))
+  // A challenge to answer.
+  const challenged = DUELS_ENABLED && duels.data?.some((d) => d.status === 'pending' && d.opponent_id === profile.id)
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
       <div className="scarf h-3" aria-hidden />

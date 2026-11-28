@@ -25,33 +25,29 @@ aby nemiešali IQ z tipovania (Kolo, Môj klub) a level.
   na neskoršie prerobenie.
 
 ## Duel o zápas
-1. **A vyzve B** na jeden zápas, ktorý ešte nezačal, a zvolí stávku.
-2. **B prijme so svojím tipom** na ten zápas (bez tipu prijať nemôže). Strana B = výsledok jeho tipu:
-   2:1 → **1**, 1:1 → **X**, 0:2 → **2**. Presné skóre sa nikde neukáže. Po prijatí môže B meniť skóre,
-   ale nie víťaza (`TIP_DUEL_LOCKED`), ani tip zmazať.
-3. **A uvidí len stranu B** a vyberie si jednu z dvoch ostávajúcich strán alebo dvojtip bez strany B
-   (B má 1 → A môže X, 2, X2), alebo duel **odmietne**.
-4. **Odmietnutie po prijatí** (aj keď A nestihne vybrať do výkopu) sa hráčovi A počíta medzi jeho 3 zápasové duely
-   v kole a na ten istý zápas už toho hráča nevyzve. Na iný zápas áno.
-5. Výzvu treba prijať a stranu vybrať do výkopu zápasu.
+Prepracované 28. 11. 2026: obaja tipujú naslepo, nikto nie je nútený hrať na opačnú stranu.
+
+1. **A vyzve B** na jeden zápas, ktorý ešte nezačal, zvolí stávku a svoj tip: **1, 1X, X, X2 alebo 2**.
+2. **B prijme so svojím tipom** z tých istých piatich (nezávisle od svojho tipu na zápas, ten sa nezamyká), alebo odmietne.
+3. Tip súpera nikto nevidí do výkopu (RLS na `duel_picks`). Rovnaký tip je povolený.
+4. Výzvu treba prijať do výkopu, inak prepadne. Prijatý duel sa už zrušiť nedá.
 
 **Výplata** (nulový súčet, S = stávka, ½S zaokrúhlené nadol):
 
-| Situácia | A | B |
+| Situácia | víťaz | porazený |
 |---|---|---|
-| Padla strana B | −S | +S |
-| Padla jednoduchá strana A | +S | −S |
-| Padol dvojtip A | +½S | −½S |
-| Padol tretí výsledok (nikto) | 0 | 0 |
+| Trafil len jeden, jednoduchý tip (1/X/2) | +S | −S |
+| Trafil len jeden, dvojtip (1X/X2) | +½S | −½S |
+| Trafili obaja alebo nikto (aj rovnaký tip) | 0 | 0 |
 
-- **Limit:** 3 zápasové duely na hráča a kolo (čakajúce, prijaté, odohrané a vlastné odmietnutia po prijatí),
+- **Limit:** 3 zápasové duely na hráča a kolo (čakajúce, prijaté, odohrané),
   s tým istým súperom na jeden zápas len raz (zrušená výzva, ktorú B nevidel, sa nepočíta).
-- **Utajenie:** zápasové duely vidia do výkopu len ich dvaja hráči, potom sú verejné.
+- **Utajenie:** zápasové duely vidia do výkopu len ich dvaja hráči, potom sú verejné aj s tipmi.
 - Odložený zápas duel zruší bez zmeny R. Bonus za odvahu sa pri zápasových dueloch neuplatňuje.
 
 ## Ako (rozhodnutia buildera)
-- Tabuľka `duels` (`category` 'individual' | 'club' | 'match', `fixture_id`, `opponent_pick`, `challenger_pick`,
-  stav `withdrawn`), zapisuje sa len cez RPC: `challenge_duel`, `challenge_match_duel`, `respond_duel`, `pick_duel`,
-  `cancel_duel` (zrušenie čakajúcej výzvy alebo odmietnutie po prijatí). Rešpekt všetkých vráti `respect_board()`.
-- Prepadnutie, odmietnutie pri výkope a vyhodnotenie robí `sync` (každých 10 min). Výplatu zápasového duelu počíta
+- Tabuľka `duels` (`category` 'individual' | 'club' | 'match', `fixture_id`), tipy zápasových duelov v `duel_picks`
+  (vidíš svoj, súperov až po výkope). Zapisuje sa len cez RPC: `challenge_duel`, `challenge_match_duel` (s tipom),
+  `respond_duel` (pri zápase s tipom), `cancel_duel` (zrušenie čakajúcej výzvy). Rešpekt všetkých vráti `respect_board()`.
+- Prepadnutie a vyhodnotenie robí `sync` (každých 10 min). Výplatu zápasového duelu počíta
   `_shared/duel.ts`. Opravy FPL po vyhodnotení sa do duelu už nepremietnu.

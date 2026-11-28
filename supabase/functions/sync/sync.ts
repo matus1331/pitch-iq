@@ -238,8 +238,8 @@ export async function runSync(db: SupabaseClient, fpl: FplApi): Promise<{ fixtur
 }
 
 // 7. duels. Round duels: unanswered challenges expire when their round starts, accepted ones settle once
-//    the round is over. Match duels: the same per match, plus an accepted duel the challenger never picked
-//    a side for is withdrawn at kickoff, and a postponed match voids its duels. Results are Rešpekt, not IQ.
+//    the round is over. Match duels: the same per match (both picks are in duel_picks), and a postponed match
+//    voids its duels. Results are Rešpekt, not IQ.
 async function settleDuels(db: SupabaseClient, fixtures: FixtureRow[]) {
   const started = new Set(fixtures.filter((f) => f.started).map((f) => f.gameweek_id))
   const over = new Set(fixtures.filter((f) => f.gameweek_id != null).map((f) => f.gameweek_id))
@@ -260,12 +260,17 @@ async function settleDuels(db: SupabaseClient, fixtures: FixtureRow[]) {
     ...roundDuels.filter((d) => d.status === 'pending' && started.has(d.gameweek_id)),
     ...live.filter((d) => d.status === 'pending' && byId.get(d.fixture_id)!.started),
   ].map((d) => d.id))
-  await setStatus('withdrawn', live.filter((d) => d.status === 'accepted' && d.challenger_pick == null && byId.get(d.fixture_id)!.started).map((d) => d.id))
-
-  for (const d of live.filter((d) => d.status === 'accepted' && d.challenger_pick != null)) {
+  const settle = live.filter((d) => {
     const f = byId.get(d.fixture_id)!
-    if (!f.finished || f.team_h_score == null || f.team_a_score == null) continue
-    const r = matchDuelDeltas(d.stake, d.challenger_pick, d.opponent_pick, sideOf(f.team_h_score, f.team_a_score))
+    return d.status === 'accepted' && f.finished && f.team_h_score != null && f.team_a_score != null
+  })
+  const picks: Json[] = settle.length ? must(await db.from('duel_picks').select('*').in('duel_id', settle.map((d) => d.id))) : []
+  const pickOf = (duel: number, user: string) => picks.find((p) => p.duel_id === duel && p.user_id === user)?.pick
+  for (const d of settle) {
+    const f = byId.get(d.fixture_id)!
+    const a = pickOf(d.id, d.challenger_id), b = pickOf(d.id, d.opponent_id)
+    if (!a || !b) continue
+    const r = matchDuelDeltas(d.stake, a, b, sideOf(f.team_h_score!, f.team_a_score!))
     must(await db.from('duels').update({ status: 'finished', challenger_delta: r.challenger, opponent_delta: r.opponent })
       .eq('id', d.id).eq('status', 'accepted'))
   }

@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(34);
 
 -- Test-only data: an open round (9013) with two matches. Everyone starts with 100 Rešpekt.
 insert into teams (id, code, name, short_name) values (9001, 3, 'Arsenal', 'ARS'), (9009, 11, 'Everton', 'EVE')
@@ -58,47 +58,36 @@ set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","r
 select is((select status from respond_duel((select id from ids where name = 'ab'), true)), 'accepted', 'opponent_accepts_round_duel');
 select throws_ok($$select respond_duel((select id from ids where name = 'ab'), true)$$, 'DUEL_NOT_PENDING', 'cannot_answer_twice');
 
--- Match duels: a challenges b on 9201; b accepts with his 2:1, so b's side is H.
+-- Match duels: a challenges b on 9201 with X2. Both pick blind; b is not tied to his 2:1 tip.
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
-select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9200, 10)$$, 'DUEL_FIXTURE_INVALID', 'no_duel_on_started_match');
-insert into ids select 'm1', id from challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 10);
-select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 5)$$, 'DUEL_EXISTS', 'one_duel_per_pair_and_match');
-select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'A')$$, 'DUEL_NOT_PICKABLE', 'no_pick_before_accept');
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9200, 10, 'H')$$, 'DUEL_FIXTURE_INVALID', 'no_duel_on_started_match');
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 10, 'HA')$$, 'DUEL_PICK_INVALID', 'no_12_pick');
+insert into ids select 'm1', id from challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 10, 'DA');
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9201, 5, 'H')$$, 'DUEL_EXISTS', 'one_duel_per_pair_and_match');
+select throws_ok($$insert into duel_picks (duel_id, user_id, pick) values ((select id from ids where name = 'm1'), auth.uid(), 'H')$$,
+  '42501', null, 'direct_pick_insert_forbidden');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
 select is((select count(*)::int from duels where category = 'match'), 0, 'match_duel_hidden_from_others_before_kickoff');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
-select is((select opponent_pick from respond_duel((select id from ids where name = 'm1'), true)), 'H', 'accept_takes_side_from_tip');
-select lives_ok($$update match_tips set home_goals = 3, away_goals = 0 where fixture_id = 9201 and user_id = auth.uid()$$, 'score_may_change_within_side');
-select throws_ok($$update match_tips set home_goals = 1, away_goals = 1 where fixture_id = 9201 and user_id = auth.uid()$$, 'TIP_DUEL_LOCKED', 'side_is_locked');
-select throws_ok($$delete from match_tips where fixture_id = 9201 and user_id = auth.uid()$$, 'TIP_DUEL_LOCKED', 'tip_cannot_be_deleted');
-select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'D')$$, 'DUEL_NOT_YOURS', 'only_challenger_picks');
+select is((select count(*)::int from duel_picks), 0, 'opponent_does_not_see_challengers_pick');
+select throws_ok($$select respond_duel((select id from ids where name = 'm1'), true)$$, 'DUEL_PICK_INVALID', 'accept_needs_a_pick');
+select is((select status from respond_duel((select id from ids where name = 'm1'), true, 'DA')), 'accepted', 'same_pick_is_allowed');
+select is((select count(*)::int from duel_picks), 1, 'opponent_sees_only_own_pick');
+select lives_ok($$update match_tips set home_goals = 1, away_goals = 1 where fixture_id = 9201 and user_id = auth.uid()$$, 'tip_not_locked_by_duel');
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
-select is((select opponent_pick from duels where id = (select id from ids where name = 'm1')), 'H', 'challenger_sees_side');
-select is((select home_goals from match_tips where fixture_id = 9201 and user_id = '00000000-0000-0000-0000-0000000000b2'), null, 'challenger_does_not_see_score');
-select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'H')$$, 'DUEL_PICK_INVALID', 'cannot_pick_opponents_side');
-select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'HD')$$, 'DUEL_PICK_INVALID', 'double_cannot_cover_opponents_side');
-select is((select challenger_pick from pick_duel((select id from ids where name = 'm1'), 'DA')), 'DA', 'challenger_picks_double');
-select throws_ok($$select pick_duel((select id from ids where name = 'm1'), 'A')$$, 'DUEL_NOT_PICKABLE', 'pick_once');
-
--- b needs a tip to accept; then a withdraws, which still uses up one of a's three match duels.
-insert into ids select 'm2', id from challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9202, 5);
-set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
-select throws_ok($$select respond_duel((select id from ids where name = 'm2'), true)$$, 'DUEL_NEEDS_TIP', 'accept_needs_a_tip');
-insert into match_tips (user_id, fixture_id, kind, home_goals, away_goals) values (auth.uid(), 9202, 'exact', 0, 0);
-select is((select opponent_pick from respond_duel((select id from ids where name = 'm2'), true)), 'D', 'draw_tip_is_side_d');
-set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
-select is((select status from cancel_duel((select id from ids where name = 'm2'))), 'withdrawn', 'challenger_withdraws_after_seeing_side');
-select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9202, 5)$$, 'DUEL_EXISTS', 'no_new_duel_on_same_match_after_withdrawal');
-insert into ids select 'm3', id from challenge_match_duel('00000000-0000-0000-0000-0000000000c2', 9203, 5);
-select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000e2', 9204, 5)$$, 'DUEL_MATCH_LIMIT', 'withdrawal_counts_toward_three');
+select is((select count(*)::int from duel_picks), 1, 'challenger_sees_only_own_pick');
+select throws_ok($$select cancel_duel((select id from ids where name = 'm1'))$$, 'DUEL_NOT_PENDING', 'accepted_duel_cannot_be_cancelled');
+insert into ids select 'm2', id from challenge_match_duel('00000000-0000-0000-0000-0000000000b2', 9202, 5, 'H');
+insert into ids select 'm3', id from challenge_match_duel('00000000-0000-0000-0000-0000000000c2', 9203, 5, 'D');
+select throws_ok($$select challenge_match_duel('00000000-0000-0000-0000-0000000000e2', 9204, 5, 'A')$$, 'DUEL_MATCH_LIMIT', 'three_match_duels_per_round');
 select is((select status from cancel_duel((select id from ids where name = 'm3'))), 'cancelled', 'unanswered_challenge_can_be_cancelled');
-insert into ids select 'm4', id from challenge_match_duel('00000000-0000-0000-0000-0000000000e2', 9204, 5);
+insert into ids select 'm4', id from challenge_match_duel('00000000-0000-0000-0000-0000000000e2', 9204, 5, 'A');
 select is((select status from duels where id = (select id from ids where name = 'm4')), 'pending', 'cancelled_challenge_frees_the_slot');
 
-select is((select locked from respect_board() where user_id = '00000000-0000-0000-0000-0000000000a2'), 25, 'board_shows_locked_respect');
+select is((select locked from respect_board() where user_id = '00000000-0000-0000-0000-0000000000a2'), 30, 'board_shows_locked_respect');
 
 -- An account without a profile (signed up, never entered the invite code) sees nobody's data.
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000f2","role":"authenticated"}';
@@ -111,6 +100,7 @@ update fixtures set kickoff_time = now() - interval '1 minute', started = true w
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
 select is((select count(*)::int from duels where fixture_id = 9201), 1, 'match_duel_public_after_kickoff');
+select is((select count(*)::int from duel_picks where duel_id = (select id from ids where name = 'm1')), 2, 'picks_public_after_kickoff');
 
 select * from finish();
 rollback;

@@ -4,14 +4,13 @@ export type Side = 'H' | 'D' | 'A'
 export const sideOf = (home: number, away: number): Side => (home > away ? 'H' : home < away ? 'A' : 'D')
 
 /**
- * Rešpekt both players get from a match duel. The opponent (B) holds one side; the challenger (A) picked
- * a single side or a double chance without B's. A double chance wins more often, so it wins only half the
- * stake (rounded down) and the one facing it loses only that half. Nobody hit the result: nothing moves.
+ * Rešpekt both players get from a match duel. Each picked 1, 1X, X, X2 or 2 (H, HD, D, DA, A) blind.
+ * Only one hit the result: he wins the stake, or half of it (rounded down) with a double chance, and the
+ * other loses the same. Both hit or both missed (the same pick included): nothing moves.
  */
-export function matchDuelDeltas(stake: number, challengerPick: string, opponentPick: Side, result: Side) {
-  const half = Math.floor(stake / 2)
-  if (opponentPick === result) return { challenger: -stake, opponent: stake }
-  if (!challengerPick.includes(result)) return { challenger: 0, opponent: 0 }
-  const win = challengerPick.length === 2 ? half : stake
-  return { challenger: win, opponent: -win }
+export function matchDuelDeltas(stake: number, challengerPick: string, opponentPick: string, result: Side) {
+  const a = challengerPick.includes(result), b = opponentPick.includes(result)
+  if (a === b) return { challenger: 0, opponent: 0 }
+  const win = (a ? challengerPick : opponentPick).length === 2 ? Math.floor(stake / 2) : stake
+  return a ? { challenger: win, opponent: -win } : { challenger: -win, opponent: win }
 }

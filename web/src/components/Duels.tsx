@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { levelFor } from '@shared/level.ts'
-import type { MatchTip } from '@/components/MatchTipCard'
 import { Button } from '@/components/ui/button'
 import {
   type Duel, type DuelPick, type Fixture, type Profile, type Team,
@@ -16,16 +14,31 @@ import { useRoundGws } from '@/pages/Round'
 const STAKES = [5, 10, 20] as const
 /** Free Rešpekt both players need to start a duel (the server checks the same). */
 export const MIN_DUEL_R = 10
-/** Match duels per player and round; a withdrawal after seeing the opponent's side counts too. */
+/** Match duels per player and round. */
 export const MATCH_DUELS_PER_ROUND = 3
 
-const PICK_LABEL: Record<DuelPick, string> = { H: '1', D: 'X', A: '2', HD: '1X', DA: 'X2', HA: '12' }
-/** What the challenger may pick against the opponent's side: the two other results and the double chance on them. */
-const PICKS: Record<'H' | 'D' | 'A', DuelPick[]> = { H: ['D', 'A', 'DA'], D: ['H', 'A', 'HA'], A: ['H', 'D', 'HD'] }
+const PICKS: DuelPick[] = ['H', 'HD', 'D', 'DA', 'A']
+const PICK_LABEL: Record<DuelPick, string> = { H: '1', HD: '1X', D: 'X', DA: 'X2', A: '2' }
 const half = (stake: number) => Math.floor(stake / 2)
 const bonus = (stake: number) => stake + half(stake)
-const sideOfTip = (t: MatchTip): 'H' | 'D' | 'A' =>
-  t.kind === '1x2' ? t.outcome! : t.home_goals! > t.away_goals! ? 'H' : t.home_goals! < t.away_goals! ? 'A' : 'D'
+const pickOf = (d: Duel, u: string) => d.duel_picks?.find((p) => p.user_id === u)?.pick
+
+/** The five match duel picks; a double chance wins and loses only half the stake. */
+function PickChooser({ stake, value, onChange }: { stake: number | null; value: DuelPick | null; onChange: (p: DuelPick) => void }) {
+  return (
+    <div className="grid grid-cols-5 gap-1.5">
+      {PICKS.map((p) => (
+        <Button key={p} variant={value === p ? 'default' : 'outline'} aria-pressed={value === p} onClick={() => onChange(p)}
+          className="h-auto flex-col gap-0 px-1 py-2">
+          <span className="scoreboard text-xl">{PICK_LABEL[p]}</span>
+          {stake != null && <span className="text-[11px] font-normal opacity-75">±{p.length === 2 ? half(stake) : stake} R</span>}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+const MATCH_RULES = 'Ak trafí len jeden z vás, berie stávku (s dvojtipom 1X alebo X2 len polovicu). Ak trafíte obaja alebo nikto, aj pri rovnakom tipe, je to remíza a nikto nič nestratí.'
 
 /** Rešpekt, level and duels for any player; everything duels need to decide. */
 export function useDuelStanding(userId: string) {
@@ -71,12 +84,6 @@ export function DuelPanel({ userId }: { userId: string }) {
     enabled: fixtureIds.length > 0,
     queryFn: async () => must(await supabase.from('fixtures').select('*').in('id', fixtureIds)) as Fixture[],
   })
-  // My own tips on those matches: the side I accept a match duel with.
-  const tips = useQuery({
-    queryKey: ['match_tips', 'duels', fixtureIds],
-    enabled: fixtureIds.length > 0,
-    queryFn: async () => must(await supabase.from('match_tips').select('*').eq('user_id', userId).in('fixture_id', fixtureIds)) as MatchTip[],
-  })
   if (!s || !profiles.data || !mine.length) return null
   const name = (id: string) => profiles.data.find((p) => p.id === id)?.nickname ?? '?'
 
@@ -96,16 +103,16 @@ export function DuelPanel({ userId }: { userId: string }) {
       {mine.map((d) => {
         const iChallenged = d.challenger_id === userId
         const rival = iChallenged ? d.opponent_id : d.challenger_id
-        const respond = (accept: boolean) => call(supabase.rpc('respond_duel', { p_duel: d.id, p_accept: accept }), accept ? 'Duel prijatý' : 'Duel odmietnutý')
-        const cancel = () => call(supabase.rpc('cancel_duel', { p_duel: d.id }), d.status === 'pending' ? 'Výzva zrušená' : 'Duel odmietnutý')
+        const respond = (accept: boolean, pick?: DuelPick) =>
+          call(supabase.rpc('respond_duel', { p_duel: d.id, p_accept: accept, p_pick: pick }), accept ? 'Duel prijatý' : 'Duel odmietnutý')
+        const cancel = () => call(supabase.rpc('cancel_duel', { p_duel: d.id }), 'Výzva zrušená')
         if (d.category === 'match') {
           const f = fixtures.data?.find((x) => x.id === d.fixture_id)
           return (
             <div key={d.id} className="rounded-xl bg-white p-4 text-neutral-900 shadow-md">
               <p className="text-sm text-neutral-500">Zápasový duel s {name(rival)} o {d.stake} R · {matchName(f, teams.data?.byId)}</p>
-              <MatchDuelBody d={d} rival={name(rival)} iChallenged={iChallenged} free={s.respect(userId).free}
-                myTip={tips.data?.find((t) => t.fixture_id === d.fixture_id)} onRespond={respond} onCancel={cancel}
-                onPick={(p) => call(supabase.rpc('pick_duel', { p_duel: d.id, p_pick: p }), `Hráš na ${PICK_LABEL[p]}`)} />
+              <MatchDuelBody d={d} rival={name(rival)} mine={pickOf(d, userId)} theirs={pickOf(d, rival)} iChallenged={iChallenged}
+                free={s.respect(userId).free} onRespond={respond} onCancel={cancel} />
             </div>
           )
         }
@@ -121,9 +128,8 @@ export function DuelPanel({ userId }: { userId: string }) {
   )
 }
 
-/** Duels waiting for my move: an incoming challenge, or my side in an accepted match duel. */
-const needsMe = (d: Duel, me: string) => (d.status === 'pending' && d.opponent_id === me)
-  || (d.status === 'accepted' && d.category === 'match' && d.challenger_id === me && !d.challenger_pick)
+/** Duels waiting for my move: an incoming challenge. */
+const needsMe = (d: Duel, me: string) => d.status === 'pending' && d.opponent_id === me
 
 function Verdict({ d, iChallenged }: { d: Duel; iChallenged: boolean }) {
   const delta = (iChallenged ? d.challenger_delta : d.opponent_delta) ?? 0
@@ -185,83 +191,48 @@ function RoundDuelBody({ d, rival, iChallenged, underdog, live, free, onRespond,
   )
 }
 
-function MatchDuelBody({ d, rival, iChallenged, free, myTip, onRespond, onCancel, onPick }: {
-  d: Duel; rival: string; iChallenged: boolean; free: number; myTip: MatchTip | undefined
-  onRespond: (accept: boolean) => void; onCancel: () => void; onPick: (p: DuelPick) => void
+function MatchDuelBody({ d, rival, mine, theirs, iChallenged, free, onRespond, onCancel }: {
+  d: Duel; rival: string; mine: DuelPick | undefined; theirs: DuelPick | undefined; iChallenged: boolean; free: number
+  onRespond: (accept: boolean, pick?: DuelPick) => void; onCancel: () => void
 }) {
+  const [pick, setPick] = useState<DuelPick | null>(null)
   if (d.status === 'pending' && !iChallenged) {
-    const side = myTip && sideOfTip(myTip)
     return (
       <>
         <p className="font-semibold">{rival} ťa vyzýva na duel o tento zápas.</p>
-        <p className="text-sm text-neutral-600">
-          Prijmeš ho so svojím tipom. {rival} uvidí len tvoju stranu (1, X alebo 2), presné skóre nie, a vyberie si inú.
-          Po prijatí môžeš skóre ešte zmeniť, víťaza už nie.
-        </p>
-        {side
-          ? <p className="mt-2 text-sm">Tvoja strana: <b className="scoreboard text-lg">{PICK_LABEL[side]}</b></p>
-          : <p className="mt-2 text-sm text-red-700">
-              Najprv si tento zápas{' '}
-              <Link to={`/?kolo=${d.gameweek_id}&zapas=${d.fixture_id}`} className="font-semibold underline underline-offset-2">natipuj</Link>.
-            </p>}
+        <p className="text-sm text-neutral-600">Vyber si tip. {rival} už svoj má, uvidíte ho navzájom až po výkope. {MATCH_RULES}</p>
+        <div className="mt-3"><PickChooser stake={d.stake} value={pick} onChange={setPick} /></div>
         {free < d.stake && <p className="mt-1 text-sm text-red-700">Na túto stávku nemáš dosť voľného Rešpektu.</p>}
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button onClick={() => onRespond(true)} disabled={!side || free < d.stake}>Prijať duel</Button>
+          <Button onClick={() => onRespond(true, pick!)} disabled={!pick || free < d.stake}>Prijať duel</Button>
           <Button variant="outline" onClick={() => onRespond(false)}>Odmietnuť</Button>
         </div>
       </>
     )
   }
+  const myPick = mine && <> Tvoj tip: <b className="scoreboard text-lg">{PICK_LABEL[mine]}</b>.</>
   if (d.status === 'pending') {
     return (
       <div className="flex items-center justify-between gap-3">
-        <p>Čaká sa, či {rival} výzvu prijme. Musí do výkopu zápasu.</p>
+        <p>Čaká sa, či {rival} výzvu prijme. Musí do výkopu zápasu.{myPick}</p>
         <Button size="sm" variant="ghost" onClick={onCancel}>Zrušiť</Button>
       </div>
     )
   }
   if (d.status === 'declined') return <p>{iChallenged ? `${rival} duel odmietol.` : 'Duel si odmietol.'}</p>
   if (d.status === 'expired') return <p>Výzva prepadla, zápas začal skôr, než ju niekto prijal.</p>
-  if (d.status === 'withdrawn') {
-    return <p>{iChallenged
-      ? `Duel si po prijatí odmietol. Zarátal sa ti medzi ${MATCH_DUELS_PER_ROUND} zápasové duely kola a na tento zápas už ${rival} nevyzveš.`
-      : `${rival} si nevybral stranu, duel sa neodohrá.`}</p>
-  }
-
-  const theirs = d.opponent_pick!
-  if (!d.challenger_pick) {
-    if (!iChallenged) return <p>Tvoja strana je <b>{PICK_LABEL[theirs]}</b>. Čaká sa, kým si {rival} do výkopu vyberie svoju.</p>
-    return (
-      <>
-        <p className="font-semibold">{rival} prijal a hrá na <span className="scoreboard text-lg">{PICK_LABEL[theirs]}</span>. Vyber si svoju stranu.</p>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {PICKS[theirs].map((p) => (
-            <Button key={p} variant="outline" onClick={() => onPick(p)} className="h-auto flex-col gap-0 py-2">
-              <span className="scoreboard text-xl">{PICK_LABEL[p]}</span>
-              <span className="text-xs font-normal opacity-75">{p.length === 2 ? `+${half(d.stake)} / −${d.stake}` : `+${d.stake} / −${d.stake}`} R</span>
-            </Button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-neutral-500">
-          Dvojtip vyhráva častejšie, preto ti prinesie len polovicu stávky. Ak padne výsledok, ktorý nemá nikto, Rešpekt sa nemení.
-        </p>
-        <Button variant="ghost" className="mt-2 w-full" onClick={onCancel}>Odmietnuť</Button>
-        <p className="text-center text-xs text-neutral-500">
-          Odmietnutie sa ti zaráta medzi {MATCH_DUELS_PER_ROUND} zápasové duely kola a na tento zápas už {rival} nevyzveš.
-        </p>
-      </>
-    )
-  }
-  const [me, them] = iChallenged ? [d.challenger_pick, theirs] : [theirs, d.challenger_pick]
+  if (d.status !== 'accepted' && d.status !== 'finished') return null
   return (
     <>
       <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <span className="truncate font-semibold">Ty · {PICK_LABEL[me]}</span>
+        <span className="truncate font-semibold">Ty · {mine ? PICK_LABEL[mine] : '?'}</span>
         <span className="text-sm text-neutral-500">vs</span>
-        <span className="truncate text-right font-semibold">{rival} · {PICK_LABEL[them]}</span>
+        <span className="truncate text-right font-semibold">{rival} · {theirs ? PICK_LABEL[theirs] : '?'}</span>
       </div>
       {d.status === 'finished' ? <Verdict d={d} iChallenged={iChallenged} />
-        : <p className="mt-1 text-center text-sm text-neutral-600">Rozhodne výsledok zápasu.</p>}
+        : <p className="mt-1 text-center text-sm text-neutral-600">
+            {theirs ? 'Rozhodne výsledok zápasu.' : `Tip hráča ${rival} uvidíš po výkope.`}
+          </p>}
     </>
   )
 }
@@ -276,6 +247,7 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
   const [kind, setKind] = useState<Kind | null>(null)
   const [fixtureId, setFixtureId] = useState<number | null>(null)
   const [stake, setStake] = useState<number | null>(null)
+  const [pick, setPick] = useState<DuelPick | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const s = useDuelStanding(userId)
@@ -301,7 +273,7 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
     full: s.matchDuels(userId, f.gameweek_id!) >= MATCH_DUELS_PER_ROUND || s.matchDuels(opponent.id, f.gameweek_id!) >= MATCH_DUELS_PER_ROUND,
   }))
   const chosen = matchOptions.find((o) => o.f.id === fixtureId)
-  const ready = stake != null && (kind === 'round' || (kind === 'match' && chosen && !chosen.taken && !chosen.full))
+  const ready = stake != null && (kind === 'round' || (kind === 'match' && pick && chosen && !chosen.taken && !chosen.full))
   const underdog = s.levelOf(userId) < s.levelOf(opponent.id)
 
   async function send() {
@@ -309,7 +281,7 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
     setBusy(true); setError(null)
     const { error } = kind === 'round'
       ? await supabase.rpc('challenge_duel', { p_opponent: opponent.id, p_stake: stake, p_category: 'individual' })
-      : await supabase.rpc('challenge_match_duel', { p_opponent: opponent.id, p_fixture: fixtureId, p_stake: stake })
+      : await supabase.rpc('challenge_match_duel', { p_opponent: opponent.id, p_fixture: fixtureId, p_stake: stake, p_pick: pick })
     setBusy(false)
     if (error) return setError(errorText(error))
     qc.invalidateQueries({ queryKey: ['duels'] })
@@ -324,7 +296,7 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
   return (
     <>
       <Button size="sm" variant="outline" className="h-8"
-        onClick={() => { setKind(null); setFixtureId(null); setStake(null); setError(null); setOpen(true) }}>
+        onClick={() => { setKind(null); setFixtureId(null); setStake(null); setPick(null); setError(null); setOpen(true) }}>
         Vyzvať
       </Button>
       <dialog ref={ref} onClose={() => setOpen(false)}
@@ -356,9 +328,8 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
         {kind === 'match' && (
           <>
             <p className="mt-3 text-sm text-neutral-600">
-              {opponent.nickname} prijme so svojím tipom a ty uvidíš len jeho stranu (1, X alebo 2). Potom si vyberieš inú,
-              alebo dvojtip (vyhrá len polovicu stávky), alebo duel odmietneš. Za kolo máš {MATCH_DUELS_PER_ROUND} zápasové duely,
-              odmietnutie po prijatí sa počíta tiež.
+              Ty aj {opponent.nickname} si vyberiete tip naslepo, navzájom ho uvidíte až po výkope. {MATCH_RULES} Za kolo
+              máš {MATCH_DUELS_PER_ROUND} zápasové duely.
             </p>
             <label className="mt-3 block text-sm font-semibold" htmlFor="duel-fixture">Zápas</label>
             <select id="duel-fixture" className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2"
@@ -371,6 +342,8 @@ export function ChallengeButton({ opponent, userId, round }: { opponent: Profile
               ))}
             </select>
             {chosen && <p className="mt-1 text-xs text-neutral-500">Zápasové duely v {chosen.f.gameweek_id}. kole: ty {s.matchDuels(userId, chosen.f.gameweek_id!)}/{MATCH_DUELS_PER_ROUND}</p>}
+            <p className="mt-4 mb-2 text-sm font-semibold">Tvoj tip</p>
+            <PickChooser stake={stake} value={pick} onChange={setPick} />
           </>
         )}
 
